@@ -21,13 +21,13 @@ def normalizar_pesos(pesos: np.ndarray) -> np.ndarray:
 class EntornoCartera:
     """
     Entorno de inversión (MDP) para asignación dinámica de cartera.
-    - Estado: un vector numérico (features del mercado) para el día actual
+    - Estado: un vector numérico para el día actual
     - Acción: pesos de cartera para los activos
     - Recompensa: retorno de cartera - coste de transacción
     """
     def __init__(
         self,
-        datos_estado: pd.DataFrame, #DataFrame index=fechas, columns=features (ya preparado sin NaNs)
+        datos_estado: pd.DataFrame, #DataFrame index=fechas, columns=features
         retornos_diarios: pd.DataFrame, #DataFrame index=fechas, columns=activos con retornos diarios
         coste_transaccion: float = 0.001,  # 10 bps por rebalanceo
         valor_inicial: float = 1000.0,
@@ -80,47 +80,65 @@ class EntornoCartera:
     def step(self, nuevos_pesos) -> tuple[np.ndarray | None, float, bool, dict]:
         """
         Aplica una acción (pesos), calcula reward, avanza el tiempo.
+        Incluye DRIFT: aunque no rebalancees, los pesos cambian al final del día por los retornos.
         """
-        # 1) Normalizar pesos
-        pesos_actuales = normalizar_pesos(nuevos_pesos)
-
-        # 2) Retornos del día actual
+        # 1) Retornos del día actual (los necesitamos tanto para retorno como para drift)
         retornos_hoy = self.retornos_diarios.iloc[self.indice_tiempo].to_numpy(dtype=np.float64)
         retornos_hoy = np.nan_to_num(retornos_hoy, nan=0.0, posinf=0.0, neginf=0.0)
 
+        # 2) Elegir pesos al INICIO del día (después de rebalance si lo hay)
+        pesos_previos = self.pesos_anteriores.copy()
 
-        # 3) Retorno de la cartera (antes de costes)
+        if nuevos_pesos is None:
+            # No operamos: mantenemos los pesos con los que llegamos al día
+            pesos_actuales = pesos_previos
+            rotacion = 0.0
+            coste = 0.0
+        else:
+            # Operamos: rebalanceamos a los pesos objetivo
+            pesos_actuales = normalizar_pesos(nuevos_pesos)
+
+            # 3) Coste de transacción (turnover) por cambiar de pesos_previos -> pesos_actuales
+            rotacion = float(np.sum(np.abs(pesos_actuales - pesos_previos)))
+            coste = self.coste_transaccion * rotacion
+
+        # 4) Retorno de la cartera (bruto, antes de costes)
         retorno_cartera = float(np.dot(pesos_actuales, retornos_hoy))
 
-        # 4) Coste de transacción (turnover)
-        rotacion = float(np.sum(np.abs(pesos_actuales - self.pesos_anteriores)))
-        coste = self.coste_transaccion * rotacion
-
-        # 5) Recompensa
+        # 5) Recompensa (retorno neto de costes)
         recompensa = retorno_cartera - coste
 
         # 6) Actualizar valor cartera
         self.valor_cartera *= (1.0 + recompensa)
 
-        # 7) Guardar pesos para el siguiente paso
-        self.pesos_anteriores = pesos_actuales
+        # 7) DRIFT: actualizar pesos al FINAL del día por los retornos (buy-and-hold real)
+        crecimiento = 1.0 + retornos_hoy
+        pesos_despues = pesos_actuales * crecimiento  # riqueza relativa por activo
+        suma = float(pesos_despues.sum())
+
+        if suma > 0.0:
+            pesos_despues = pesos_despues / suma
+        else:
+            # Caso extremo: si algo va muy mal numéricamente, mantenemos los pesos actuales
+            pesos_despues = pesos_actuales.copy()
+
+        # Guardar pesos (ya con drift) para el siguiente paso
+        self.pesos_anteriores = pesos_despues
 
         # 8) Avanzar día
         self.indice_tiempo += 1
         terminado = self.indice_tiempo >= len(self.datos_estado)
 
         # 9) Preparar outputs
-        if terminado:
-            siguiente_estado = None
-        else:
-            siguiente_estado = self._obtener_estado_actual()
+        siguiente_estado = None if terminado else self._obtener_estado_actual()
 
         info = {
             "valor_cartera": self.valor_cartera,
             "retorno_cartera": retorno_cartera,
             "coste_transaccion": coste,
             "rotacion": rotacion,
-            "pesos": pesos_actuales
+            "pesos_inicio": pesos_actuales,   # pesos usados para el retorno del día (post-rebalance)
+            "pesos_fin": pesos_despues        # pesos tras drift (para el siguiente día)
         }
 
         return siguiente_estado, recompensa, terminado, info
