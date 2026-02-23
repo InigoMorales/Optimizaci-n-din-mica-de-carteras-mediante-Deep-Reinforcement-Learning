@@ -4,19 +4,18 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
-activos = [ #USA: S&P500 y NASDAQ
-            "^GSPC", "^NDX",
-            #Global: MSCI World y Emergentes
-            "URTH", "EEM",
-            #Europa
-            "^STOXX50E", "^GDAXI", "^IBEX", "^FCHI",
-            "FTSEMIB.MI", "^FTSE", "^AEX", "^SSMI",
-            #Commodities ORO, PLATA y PETRÓLEO
-            "GLD", "SLV", "USO",
-            #Crypto BITCOIN y ETHEREUM
-            "BTC-USD", "ETH-USD",
+activos = [ #USA: S&P500, NASDAQ y Small Caps
+            "^GSPC", "^NDX", "IWM",
+            # Emerging Markets
+            "EEM",
+            #Europa (Core + ESPAÑA)
+            "^STOXX50E", "^IBEX",
+            # Japón 
+            "EWJ",
+            #Commodities ORO y PLATA
+            "GLD", "SLV",
             #Renta Fija: Agregados, largo plazo, corto plazo, y de riesgo
-            "AGG", "TLT", "SHY", "HYG", "BNDX",
+            "AGG", "TLT", "SHY", "HYG",
             #Alternativos: Inmobiliario y deuda
             "VNQ", "BIL"]
 
@@ -36,8 +35,9 @@ precios_ajustados = precios_ajustados.dropna(how="all")
 
 precios_ajustados.to_csv(BASE_DIR / "adj_close_2010_2019.csv")
 
-#Retornos mide la variación diaria .pct_change hace p1/p0-1
-retornos = precios_ajustados.pct_change()
+#Retornos mide la variación diaria .pct_change hace p1/p0-1. 
+#El .iloc[1:] es para eliminar la primera fila que queda vacía por el cálculo de retornos.
+retornos = precios_ajustados.pct_change().iloc[1:]
 
 # ---------- División temporal ----------
 # Train: 2010-2015, Validación: 2016-2018, Test: 2019
