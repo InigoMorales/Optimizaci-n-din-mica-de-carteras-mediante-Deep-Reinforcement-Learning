@@ -17,7 +17,7 @@ activos = [ #USA: S&P500, NASDAQ y Small Caps
             #Renta Fija: Agregados, largo plazo, corto plazo, y de riesgo
             "AGG", "TLT", "SHY", "HYG",
             #Alternativos: Inmobiliario y deuda
-            "VNQ", "BIL"]
+            "VNQ", "BIL", "^IRX"]
 
 start = "2010-01-01"
 end   = "2020-01-01"  
@@ -61,14 +61,8 @@ retornos_train.to_csv(BASE_DIR / "returns_train_2010_2015.csv")
 retornos_validation.to_csv(BASE_DIR / "returns_validation_2016_2018.csv")
 retornos_test.to_csv(BASE_DIR / "returns_test_2019.csv")
 
-print("Guardado en:", BASE_DIR)
-print("TRAIN:", precios_train.index.min(), "→", precios_train.index.max(), "filas:", len(precios_train))
-print("VAL:  ", precios_validation.index.min(), "→", precios_validation.index.max(), "filas:", len(precios_validation))
-print("TEST: ", precios_test.index.min(), "→", precios_test.index.max(), "filas:", len(precios_test))
+print(retornos["^IRX"].mean() * 252/100)
 
-print("TRAIN:", retornos_train.index.min(), "→", retornos_train.index.max(), "filas:", len(retornos_train))
-print("VALIDATION:  ", retornos_validation.index.min(), "→", retornos_validation.index.max(), "filas:", len(retornos_validation))
-print("TEST: ", retornos_test.index.min(), "→", retornos_test.index.max(), "filas:", len(retornos_test))
-
+print(retornos["^GSPC"].mean() * 252*100)
 
 
