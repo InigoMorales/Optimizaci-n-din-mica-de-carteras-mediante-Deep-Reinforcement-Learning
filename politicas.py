@@ -14,7 +14,6 @@ def calcular_retorno_cartera(pesos, retornos_esperados):
         retorno += pesos[i] * retornos_esperados[i]
     return float(retorno)
 
-
 def calcular_varianza_cartera(pesos, matriz_covarianzas):
     n = len(pesos)
     varianza = 0.0
@@ -23,13 +22,11 @@ def calcular_varianza_cartera(pesos, matriz_covarianzas):
             varianza += pesos[i] * matriz_covarianzas[i, j] * pesos[j]
     return float(varianza)
 
-
 def calcular_metricas_cartera(pesos, retornos_esperados, matriz_covarianzas):
     varianza = calcular_varianza_cartera(pesos, matriz_covarianzas)
     retorno = calcular_retorno_cartera(pesos, retornos_esperados)
     volatilidad = float(np.sqrt(max(varianza, 0.0)))
     return retorno, volatilidad, varianza
-
 
 # ============================================================
 # POLÍTICAS SENCILLAS
@@ -40,14 +37,12 @@ def pesos_iguales_rebalanceo(entorno):
         return np.ones(entorno.numero_activos) / entorno.numero_activos
     return politica
 
-
 def pesos_iguales_siempre(entorno):
     def politica(_estado):
         if entorno.indice_tiempo == 0:
             return np.ones(entorno.numero_activos) / entorno.numero_activos
         return None
     return politica
-
 
 # ============================================================
 # OPTIMIZACIÓN (restricciones / solvers)
@@ -56,11 +51,9 @@ def pesos_iguales_siempre(entorno):
 def restriccion_suma_pesos(pesos):
     return float(np.sum(pesos) - 1.0)
 
-
 def restriccion_retorno_objetivo(pesos, retornos_esperados, retorno_objetivo):
     retorno = calcular_retorno_cartera(pesos, retornos_esperados)
     return float(retorno - retorno_objetivo)
-
 
 def resolver_minima_varianza_con_retorno_objetivo(
     retornos_esperados,
@@ -83,7 +76,6 @@ def resolver_minima_varianza_con_retorno_objetivo(
 
     return minimize(objetivo, x0=x0, method="SLSQP", bounds=limites, constraints=restricciones)
 
-
 def resolver_minima_varianza_global(retornos_esperados, matriz_covarianzas, solo_largos=True):
     n = len(retornos_esperados)
     x0 = np.ones(n) / n
@@ -95,7 +87,6 @@ def resolver_minima_varianza_global(retornos_esperados, matriz_covarianzas, solo
     limites = [(0.0, 1.0)] * n if solo_largos else [(-1.0, 2.0)] * n
 
     return minimize(objetivo, x0=x0, method="SLSQP", bounds=limites, constraints=restricciones)
-
 
 def resolver_max_retorno(mu, solo_largos=True):
     """
@@ -111,7 +102,6 @@ def resolver_max_retorno(mu, solo_largos=True):
     limites = [(0.0, 1.0)] * n if solo_largos else [(-1.0, 2.0)] * n
 
     return minimize(objetivo, x0=x0, method="SLSQP", bounds=limites, constraints=restricciones)
-
 
 def resolver_max_sharpe(mu, Sigma, rf, solo_largos=True):
     """
@@ -137,9 +127,8 @@ def resolver_max_sharpe(mu, Sigma, rf, solo_largos=True):
 
     return minimize(objetivo, x0=x0, method="SLSQP", bounds=limites, constraints=restricciones)
 
-
 # ============================================================
-# FRONTERA EFICIENTE (si quieres seguir usándola)
+# FRONTERA EFICIENTE
 # ============================================================
 
 def construir_frontera_eficiente(
@@ -234,30 +223,35 @@ def construir_frontera_eficiente(
 
     return frontera
 
-
 # ============================================================
 # POLÍTICAS ROLLING (3: GMV / MaxRet / Tangente)
 # ============================================================
 
-def markowitz_gmv_rolling(entorno, ventana=252, rebalance_cada=21, anualizar=252, solo_largos=True):
-    retornos = entorno.retornos_diarios
+def markowitz_gmv_rolling(
+        entorno, retornos_full: pd.DataFrame, window_years: int = 5, rebalance_cada: int = 21, 
+        anualizar: int = 252, solo_largos: bool = True, min_obs: int = 252
+        ):
+    
+    retornos_full = retornos_full.sort_index()
+    fechas_env = entorno.retornos_diarios.index
 
     def politica(_estado):
         t = entorno.indice_tiempo
-
-        if t < ventana:
-            return None
-
         if (t % rebalance_cada) != 0:
             return None
 
-        ventana_df = retornos.iloc[t - ventana:t].dropna()
-        if len(ventana_df) < max(60, int(0.6 * ventana)):
+        fecha_actual = fechas_env[t]
+        fecha_inicio = fecha_actual - pd.DateOffset(years=window_years)
+
+        ventana_df = retornos_full.loc[
+            (retornos_full.index >= fecha_inicio) & (retornos_full.index < fecha_actual)
+        ].dropna()
+
+        if len(ventana_df) < min_obs:
             return None
 
         mu = ventana_df.mean().to_numpy()
         Sigma = ventana_df.cov().to_numpy()
-
         if anualizar is not None:
             mu = mu * anualizar
             Sigma = Sigma * anualizar
@@ -265,26 +259,30 @@ def markowitz_gmv_rolling(entorno, ventana=252, rebalance_cada=21, anualizar=252
         res = resolver_minima_varianza_global(mu, Sigma, solo_largos=solo_largos)
         if (not res.success) or (res.x is None):
             return None
-
         return res.x.copy()
 
     return politica
 
-
-def markowitz_max_retorno_rolling(entorno, ventana=252, rebalance_cada=21, anualizar=252, solo_largos=True):
-    retornos = entorno.retornos_diarios
+def markowitz_max_retorno_rolling(
+    entorno, retornos_full: pd.DataFrame, window_years: int = 5, rebalance_cada: int = 21,
+    anualizar: int = 252, solo_largos: bool = True, min_obs: int = 252
+):
+    retornos_full = retornos_full.sort_index()
+    fechas_env = entorno.retornos_diarios.index
 
     def politica(_estado):
         t = entorno.indice_tiempo
-
-        if t < ventana:
-            return None
-
         if (t % rebalance_cada) != 0:
             return None
 
-        ventana_df = retornos.iloc[t - ventana:t].dropna()
-        if len(ventana_df) < max(60, int(0.6 * ventana)):
+        fecha_actual = fechas_env[t]
+        fecha_inicio = fecha_actual - pd.DateOffset(years=window_years)
+
+        ventana_df = retornos_full.loc[
+            (retornos_full.index >= fecha_inicio) & (retornos_full.index < fecha_actual)
+        ].dropna()
+
+        if len(ventana_df) < min_obs:
             return None
 
         mu = ventana_df.mean().to_numpy()
@@ -294,27 +292,40 @@ def markowitz_max_retorno_rolling(entorno, ventana=252, rebalance_cada=21, anual
         res = resolver_max_retorno(mu, solo_largos=solo_largos)
         if (not res.success) or (res.x is None):
             return None
-
         return res.x.copy()
 
     return politica
 
+def markowitz_tangente_rolling(
+    entorno,
+    retornos_full: pd.DataFrame,   # 2005-2020 (retornos diarios)
+    rf_full: pd.Series,            # 2005-2020 (rf anual decimal)
+    window_years: int = 5, rebalance_cada: int = 21, anualizar: int = 252,
+    solo_largos: bool = True, rf_floor: float = 0.0, min_obs: int = 252
+):
+    """
+    Entorno empieza en 2010 (capital 1000 en 2010), pero la estimación usa histórico externo:
+    en cada rebalanceo usa la ventana [fecha_actual - window_years, fecha_actual).
+    """
 
-def markowitz_tangente_rolling(entorno, bil_series, ventana=252, rebalance_cada=21, anualizar=252, solo_largos=True, rf_floor=0.0):
-    retornos = entorno.retornos_diarios
+    # Alinear full a fechas (por seguridad)
+    retornos_full = retornos_full.sort_index()
+    rf_full = rf_full.sort_index()
 
-    # Alinear BIL con el índice del entorno
-    bil_series = bil_series.reindex(retornos.index).fillna(0.0)
+    fechas_env = entorno.retornos_diarios.index
 
     def politica(_estado):
         t = entorno.indice_tiempo
-        if t < ventana:
-            return None
+
+        # rebalanceo periódico
         if (t % rebalance_cada) != 0:
             return None
 
-        ventana_df = retornos.iloc[t-ventana:t].dropna()
-        if len(ventana_df) < max(60, int(0.6 * ventana)):
+        fecha_actual = fechas_env[t]
+        fecha_inicio = fecha_actual - pd.DateOffset(years=window_years)
+
+        ventana_df = retornos_full.loc[(retornos_full.index >= fecha_inicio) & (retornos_full.index < fecha_actual)].dropna()
+        if len(ventana_df) < min_obs:
             return None
 
         mu = ventana_df.mean().to_numpy()
@@ -324,8 +335,8 @@ def markowitz_tangente_rolling(entorno, bil_series, ventana=252, rebalance_cada=
             mu = mu * anualizar
             Sigma = Sigma * anualizar
 
-        # rf dinámico (solo pasado)
-        rf_t = float(bil_series.iloc[t-ventana:t].mean() * anualizar)
+        rf_vent = rf_full.loc[(rf_full.index >= fecha_inicio) & (rf_full.index < fecha_actual)]
+        rf_t = float(rf_vent.mean()) if len(rf_vent) else 0.0
         if rf_floor is not None:
             rf_t = max(float(rf_floor), rf_t)
 
