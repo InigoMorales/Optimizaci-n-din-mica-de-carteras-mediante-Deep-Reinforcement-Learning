@@ -347,3 +347,34 @@ def markowitz_tangente_rolling(
         return res.x.copy()
 
     return politica
+
+def cartera_optima_en_funcion_riesgo(
+        entorno, retornos_full: pd.DataFrame, rf_full: pd.Series, alpha: float,
+        window_years: int = 5, rebalance_cada: int = 21, anualizar: int = 252,
+    solo_largos: bool = True, rf_floor: float = 0.0, min_obs: int = 252):
+    """
+    Coge la cartera tangente (max Sharpe) y mezcla con rf 
+    según el alpha (aversión al riesgo) de cada ususario"""
+    alpha = float(alpha)
+    alpha = max(0.0, min(1.0, alpha))
+
+    # Reutilizamos política de markowitz_tangente_rolling para obtener la cartera tangente dinámica
+    base_pol = markowitz_tangente_rolling(
+        entorno=entorno,
+        retornos_full=retornos_full,
+        rf_full=rf_full,
+        window_years=window_years,
+        rebalance_cada=rebalance_cada,
+        anualizar=anualizar,
+        solo_largos=solo_largos,
+        rf_floor=rf_floor,
+        min_obs=min_obs,
+    )
+
+    def politica(_estado):
+        w = base_pol(_estado)
+        if w is None:
+            return None
+        return alpha * np.asarray(w, dtype=float)
+    # si alpha = 0.7, entonces se asigna un 70% a la cartera tangente y el 30% restante se deja en cash (rf)
+    return politica

@@ -8,7 +8,7 @@ from politicas import (
     pesos_iguales_rebalanceo, pesos_iguales_siempre,
     resolver_minima_varianza_global, resolver_max_retorno,
     resolver_max_sharpe, markowitz_gmv_rolling, markowitz_max_retorno_rolling,
-    markowitz_tangente_rolling, construir_frontera_eficiente,
+    markowitz_tangente_rolling, construir_frontera_eficiente, cartera_optima_en_funcion_riesgo
 )
 
 # ============================================================
@@ -21,6 +21,7 @@ VENTANA = 252
 REBALANCE_CADA = 21
 SOLO_LARGOS = True
 ANUALIZAR = 252
+ALPHA = 0.7
 
 
 def politica_estatica(w: np.ndarray):
@@ -138,19 +139,30 @@ def main():
             anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, rf_floor=0.0, min_obs=VENTANA))
 
     # =========================
+    # Cartera óptima en función del riesgo
+    # =========================
+
+    curva_optima_con_rf = entorno.ejecutar_backtest(
+        cartera_optima_en_funcion_riesgo(
+            entorno, retornos_full=retornos_riesgo, rf_full=rf_dinamico, rebalance_cada=REBALANCE_CADA,
+            anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, rf_floor=0.0, min_obs=VENTANA, alpha=ALPHA))
+
+    # =========================
     # Plot final
     # =========================
     plt.figure()
-    plt.plot(curva_rebalance, label="Iguales rebalanceo")
-    plt.plot(curva_hold, label="Iguales buy & hold")
+    #plt.plot(curva_rebalance, label="Iguales rebalanceo")
+    #plt.plot(curva_hold, label="Iguales buy & hold")
 
-    plt.plot(curva_gmv, label="Estático GMV (min riesgo)")
-    plt.plot(curva_max_retorno, label="Estático Max retorno")
-    plt.plot(curva_sharpe, label=f"Estático Tangente (Sharpe, rf={rf_estatico_2010_2019:.2%})")
+    #plt.plot(curva_gmv, label="Estático GMV (min riesgo)")
+    #plt.plot(curva_max_retorno, label="Estático Max retorno")
+    #plt.plot(curva_sharpe, label=f"Estático Tangente (Sharpe, rf={rf_estatico_2010_2019:.2%})")
 
     plt.plot(curva_gmv_roll, "--", label="Rolling GMV")
     plt.plot(curva_max_retorno_roll, "--", label="Rolling Max retorno")
     plt.plot(curva_sharpe_roll, "--", label="Rolling Tangente (Sharpe)")
+
+    plt.plot(curva_optima_con_rf, "--", label=f"Cartera óptima función riesgo (alpha={ALPHA})")
 
     plt.title("Backtest (Universo completo)")
     plt.grid(True)

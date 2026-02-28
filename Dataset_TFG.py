@@ -64,6 +64,8 @@ precios_activos_completos = precios.drop(columns=["^IRX"])
 # RETORNOS ACTIVOS DE RIESGO (diarios)
 # ============================================================
 
+#pct.change calcula la variación porcentual respecto a su valor anterior: (P_t - P_{t-1}) / P_{t-1}
+#el iloc[1:] se usa para eliminar la primera fila ya que no podrás calcular la variación del 1er dato
 retornos_activos_completos = precios_activos_completos.pct_change().iloc[1:]
 retornos_activos_completos = retornos_activos_completos.dropna(how="all")
 retornos_activos_completos.to_csv(BASE_DIR / "retornos_2005_2019.csv")
