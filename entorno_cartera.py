@@ -93,11 +93,15 @@ class EntornoCartera:
         return self._obtener_estado_actual()
 
     def _obtener_estado_actual(self) -> np.ndarray:
-        """
-        Devuelve el estado (features) del día actual como vector numpy.
-        """
-        fila_estado = self.datos_estado.iloc[self.indice_tiempo]
-        return fila_estado.to_numpy(dtype=np.float32)
+        fila_estado = self.datos_estado.iloc[self.indice_tiempo].to_numpy(dtype=np.float32)
+
+        # pesos previos (riesgosos)
+        w_prev = self.pesos_anteriores.astype(np.float32)
+
+        # cash implícito al inicio del día (antes de aplicar retornos del día)
+        cash_prev = np.float32(max(0.0, 1.0 - float(self.pesos_anteriores.sum())))
+
+        return np.concatenate([fila_estado, w_prev, np.array([cash_prev], dtype=np.float32)])
 
     def _rf_hoy(self) -> float:
         return float(self.rf_diario.iloc[self.indice_tiempo])

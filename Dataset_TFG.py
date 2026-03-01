@@ -1,5 +1,6 @@
 import yfinance as yf
 import pandas as pd
+import numpy as np
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -116,6 +117,8 @@ rf_validation = rf_anual_completo.loc[
 ]
 rf_test = rf_anual_completo.loc[rf_anual_completo.index >= fecha_fin_validation]
 
+rf_diario = (1.0 + rf_anual_completo) ** (1.0 / 252.0) - 1.0
+
 # ============================================================
 # GUARDAR TODO
 # ============================================================
@@ -127,6 +130,64 @@ retornos_test.to_csv(BASE_DIR / "retornos_test_2019.csv")
 rf_train.to_csv(BASE_DIR / "rf_train_2010_2015.csv")
 rf_validation.to_csv(BASE_DIR / "rf_validation_2016_2018.csv")
 rf_test.to_csv(BASE_DIR / "rf_test_2019.csv")
+
+# ============================================================
+# CONSTRUCCIÓN DE FEATURES (SIN LEAKAGE)
+# ============================================================
+
+def construir_features(ret: pd.DataFrame) -> pd.DataFrame:
+    ret = ret.sort_index().copy()
+
+    # Momentum
+    momentum_20 = ret.rolling(20).sum().add_suffix("_momentum20")
+    momentum_60 = ret.rolling(60).sum().add_suffix("_momentum60")
+
+    # Volatilidad
+    volatilidad_20 = ret.rolling(20).std(ddof=1).add_suffix("_volatilidad20")
+    volatilidad_60 = ret.rolling(60).std(ddof=1).add_suffix("_volatilidad60")
+
+    # Correlación media 60d
+    def correlacion_media(window_df: pd.DataFrame) -> float:
+        correlacion = window_df.corr().to_numpy()
+        n = correlacion.shape[0]
+        if n <= 1:
+            return 0.0
+        return float((correlacion.sum() - np.trace(correlacion)) / (n * (n - 1)))
+
+    correlacion_media_vals = []
+    idx = ret.index
+
+    for t in range(len(ret)):
+        if t < 60:
+            correlacion_media_vals.append(np.nan)
+        else:
+            w = ret.iloc[t-60:t]
+            correlacion_media_vals.append(correlacion_media(w))
+
+    correlacion_media_60 = pd.Series(correlacion_media_vals, index=idx, name="mean_corr_60")
+
+    feats = pd.concat([momentum_20, momentum_60, volatilidad_20, volatilidad_60, correlacion_media_60], axis=1)
+
+    # IMPORTANTE: evitar leakage
+    feats = feats.shift(1)
+
+    feats = feats.dropna()
+    return feats
+
+# ============================================================
+# GENERAR FEATURES
+# ============================================================
+
+features_full = construir_features(retornos_activos_completos)
+features_full.to_csv(BASE_DIR / "features_2005_2019.csv")
+
+features_train = features_full.loc[retornos_train.index.intersection(features_full.index)]
+features_validation = features_full.loc[retornos_validation.index.intersection(features_full.index)]
+features_test = features_full.loc[retornos_test.index.intersection(features_full.index)]
+
+features_train.to_csv(BASE_DIR / "features_train_2010_2015.csv")
+features_validation.to_csv(BASE_DIR / "features_validation_2016_2018.csv")
+features_test.to_csv(BASE_DIR / "features_test_2019.csv")
 
 print("Dataset generado correctamente.")
 print("Media rf anual (train):", rf_train.mean() * 100.0 , "%")

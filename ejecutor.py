@@ -16,13 +16,13 @@ from politicas import (
 # ============================================================
 RETURNS_PATH = "retornos_2005_2019.csv"
 RF_PATH      = "rf_2005_2019.csv"
+FEATURES_PATH = "features_2005_2019.csv"
 
 VENTANA = 252
 REBALANCE_CADA = 21
 SOLO_LARGOS = True
 ANUALIZAR = 252
 ALPHA = 0.7
-
 
 def backtest_con_pesos(entorno, funcion_pesos):
     """
@@ -60,7 +60,6 @@ def backtest_con_pesos(entorno, funcion_pesos):
     df.index.name = "fecha"
     return df
 
-
 def imprimir_pesos_fin_de_ano(df_pesos, titulo, top_n=None):
     """
     Imprime los pesos a fin de año. Si top_n se indica, imprime solo los top_n activos (por peso)
@@ -87,13 +86,11 @@ def imprimir_pesos_fin_de_ano(df_pesos, titulo, top_n=None):
         for a, w in top.items():
             print(f"  {a:>10s}: {w:.4f}")
 
-
 def politica_estatica(w: np.ndarray):
     w = np.asarray(w, dtype=float).copy()
     def pol(_estado, w=w):
         return w
     return pol
-
 
 def main():
     # =========================
@@ -101,16 +98,21 @@ def main():
     # =========================
     retornos_riesgo = (pd.read_csv(RETURNS_PATH, index_col=0, parse_dates=True)
         .sort_index()
-        .dropna(how="all")
-    )
+        .dropna(how="all"))
 
     rf_dinamico = (
         pd.read_csv(RF_PATH, index_col=0, parse_dates=True)
         .squeeze("columns")
-        .sort_index()
-    )
+        .sort_index())
+    
+    features_full = (pd.read_csv(FEATURES_PATH, index_col=0, parse_dates=True)
+                 .sort_index()
+                 .dropna(how="all"))
 
-    # Alinear fechas
+    features_2010_2019 = features_full.loc[
+        (features_full.index >= "2010-01-01") & (features_full.index < "2020-01-01")]
+
+    # Alinear fechas (retornos vs rf)
     fechas = retornos_riesgo.index.intersection(rf_dinamico.index)
     if len(fechas) == 0:
         raise ValueError("No hay fechas comunes entre returns y rf. Revisa los CSV.")
@@ -119,24 +121,24 @@ def main():
     rf_dinamico = rf_dinamico.loc[retornos_riesgo.index].ffill().fillna(0.0)
 
     retornos_riesgo_2005_2009 = retornos_riesgo.loc[
-        (retornos_riesgo.index >= "2005-01-01") & (retornos_riesgo.index < "2010-01-01")
-    ]
+        (retornos_riesgo.index >= "2005-01-01") & (retornos_riesgo.index < "2010-01-01")]
 
     retornos_riesgo_2010_2019 = retornos_riesgo.loc[
-        (retornos_riesgo.index >= "2010-01-01") & (retornos_riesgo.index < "2020-01-01")
-    ]
+        (retornos_riesgo.index >= "2010-01-01") & (retornos_riesgo.index < "2020-01-01")]
 
     rf_dinamico_2005_2009 = rf_dinamico.loc[
-        (rf_dinamico.index >= "2005-01-01") & (rf_dinamico.index < "2010-01-01")
-    ]
+        (rf_dinamico.index >= "2005-01-01") & (rf_dinamico.index < "2010-01-01")]
 
     rf_dinamico_2010_2019 = rf_dinamico.loc[
-        (rf_dinamico.index >= "2010-01-01") & (rf_dinamico.index < "2020-01-01")
-    ]
+        (rf_dinamico.index >= "2010-01-01") & (rf_dinamico.index < "2020-01-01")]
 
     rf_estatico = float(rf_dinamico.mean())
     rf_estatico_2005_2009 = float(rf_dinamico_2005_2009.mean())
     rf_estatico_2010_2019 = float(rf_dinamico_2010_2019.mean())
+
+    rf_diario = (1.0 + rf_dinamico) ** (1.0 / ANUALIZAR) - 1.0
+    rf_diario_2010_2019 = (1.0 + rf_dinamico_2010_2019) ** (1.0 / ANUALIZAR) - 1.0
+    rf_diario_2005_2009 = (1.0 + rf_dinamico_2005_2009) ** (1.0 / ANUALIZAR) - 1.0
 
     print(f"N días: {len(retornos_riesgo)} | N activos: {retornos_riesgo.shape[1]}")
     print(f"rf medio anual: {rf_estatico * 100:.3f}%")
@@ -144,10 +146,35 @@ def main():
     print(f"rf medio anual 2010-2019: {rf_estatico_2010_2019 * 100:.3f}%")
 
     # =========================
+    # AÑADIDO: Alinear FECHAS para el ENTORNO (features + retornos_2010_2019 + rf_diario_2010_2019)
+    # =========================
+    fechas_env = (
+        features_2010_2019.index
+        .intersection(retornos_riesgo_2010_2019.index)
+        .intersection(rf_diario_2010_2019.index)
+    )
+    if len(fechas_env) == 0:
+        raise ValueError("No hay fechas comunes entre features, retornos_2010_2019 y rf_diario_2010_2019.")
+
+    # Importante: recortar todo exactamente al mismo índice
+    features_2010_2019 = features_2010_2019.loc[fechas_env].dropna(how="any")
+    retornos_riesgo_2010_2019 = retornos_riesgo_2010_2019.loc[features_2010_2019.index].dropna(how="any")
+    rf_diario_2010_2019 = rf_diario_2010_2019.loc[features_2010_2019.index].ffill().fillna(0.0)
+
+    print(f"[ENV] Fechas comunes: {len(features_2010_2019)} | "
+          f"features={features_2010_2019.shape[1]} | activos={retornos_riesgo_2010_2019.shape[1]}")
+
+    # =========================
     # Entorno
     # =========================
-    # Mantengo tu creación tal cual (si tu EntornoCartera ahora requiere rf_diario, pásalo aquí)
-    entorno = EntornoCartera(retornos_riesgo_2010_2019, retornos_riesgo_2010_2019)
+    entorno = EntornoCartera(
+        datos_estado=features_2010_2019,
+        retornos_diarios=retornos_riesgo_2010_2019,
+        coste_transaccion=0.001,
+        valor_inicial=1000.0,
+        pesos_iniciales="iguales",
+        rf_diario=rf_diario_2010_2019
+    )
 
     # =========================
     # Baselines
@@ -179,26 +206,22 @@ def main():
     # =========================
     pol_gmv_roll = markowitz_gmv_rolling(
         entorno, retornos_full=retornos_riesgo, window_years=5, rebalance_cada=REBALANCE_CADA,
-        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, min_obs=VENTANA
-    )
+        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, min_obs=VENTANA)
 
     pol_max_retorno_roll = markowitz_max_retorno_rolling(
         entorno, retornos_full=retornos_riesgo, window_years=5, rebalance_cada=REBALANCE_CADA,
-        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, min_obs=VENTANA
-    )
+        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, min_obs=VENTANA)
 
     pol_sharpe_roll = markowitz_tangente_rolling(
         entorno, retornos_full=retornos_riesgo, rf_full=rf_dinamico, window_years=5, rebalance_cada=REBALANCE_CADA,
-        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, rf_floor=0.0, min_obs=VENTANA
-    )
+        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, rf_floor=0.0, min_obs=VENTANA)
 
     # =========================
     # Cartera óptima en función del riesgo (política) y luego backtest
     # =========================
     pol_optima_con_rf = cartera_optima_en_funcion_riesgo(
         entorno, retornos_full=retornos_riesgo, rf_full=rf_dinamico, rebalance_cada=REBALANCE_CADA,
-        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, rf_floor=0.0, min_obs=VENTANA, alpha=ALPHA
-    )
+        anualizar=ANUALIZAR, solo_largos=SOLO_LARGOS, rf_floor=0.0, min_obs=VENTANA, alpha=ALPHA)
 
     # Ahora sí: crear curvas llamando al entorno
     curva_gmv_roll = entorno.ejecutar_backtest(pol_gmv_roll)
@@ -209,40 +232,39 @@ def main():
     # =========================
     # Ejecutar y printear fin de año (PASANDO POLÍTICAS, no curvas)
     # =========================
-    df_gmv = backtest_con_pesos(entorno, pol_gmv_roll)
-    imprimir_pesos_fin_de_ano(df_gmv, "Rolling GMV - pesos fin de año", top_n=6)
+    '''df_gmv_roll = backtest_con_pesos(entorno, pol_gmv_roll)
+    imprimir_pesos_fin_de_ano(df_gmv_roll, "Rolling GMV - pesos fin de año", top_n=6)
 
-    df_maxret = backtest_con_pesos(entorno, pol_max_retorno_roll)
-    imprimir_pesos_fin_de_ano(df_maxret, "Rolling Max Retorno - pesos fin de año", top_n=6)
+    df_max_retorno = backtest_con_pesos(entorno, pol_max_retorno_roll)
+    imprimir_pesos_fin_de_ano(df_max_retorno, "Rolling Max Retorno - pesos fin de año", top_n=6)
 
-    df_tan = backtest_con_pesos(entorno, pol_sharpe_roll)
-    imprimir_pesos_fin_de_ano(df_tan, "Rolling Tangente (Sharpe) - pesos fin de año", top_n=6)
+    df_sharpe_roll = backtest_con_pesos(entorno, pol_sharpe_roll)
+    imprimir_pesos_fin_de_ano(df_sharpe_roll, "Rolling Tangente (Sharpe) - pesos fin de año", top_n=6)
 
-    df_tan_alpha = backtest_con_pesos(entorno, pol_optima_con_rf)
-    imprimir_pesos_fin_de_ano(df_tan_alpha, f"Rolling Tangente + rf (alpha={ALPHA}) - pesos fin de año", top_n=6)
-
+    df_optima_con_rf = backtest_con_pesos(entorno, pol_optima_con_rf)
+    imprimir_pesos_fin_de_ano(df_optima_con_rf, f"Rolling Tangente + rf (alpha={ALPHA}) - pesos fin de año", top_n=6)
+    '''
     # =========================
     # Plot final (lo dejas como lo tenías, lo comento tal cual)
     # =========================
-    # plt.figure()
-    # plt.plot(curva_rebalance, label="Iguales rebalanceo")
-    # plt.plot(curva_hold, label="Iguales buy & hold")
-    #
-    # plt.plot(curva_gmv, label="Estático GMV (min riesgo)")
-    # plt.plot(curva_max_retorno, label="Estático Max retorno")
-    # plt.plot(curva_sharpe, label=f"Estático Tangente (Sharpe, rf={rf_estatico_2010_2019:.2%})")
-    #
-    # plt.plot(curva_gmv_roll, "--", label="Rolling GMV")
-    # plt.plot(curva_max_retorno_roll, "--", label="Rolling Max retorno")
-    # plt.plot(curva_sharpe_roll, "--", label="Rolling Tangente (Sharpe)")
-    #
-    # plt.plot(curva_optima_con_rf, "--", label=f"Cartera óptima función riesgo (alpha={ALPHA})")
-    #
-    # plt.title("Backtest (Universo completo)")
-    # plt.grid(True)
-    # plt.legend()
-    # plt.show()
-
+    plt.figure()
+    plt.plot(curva_rebalance, label="Iguales rebalanceo")
+    plt.plot(curva_hold, label="Iguales buy & hold")
+    
+    plt.plot(curva_gmv, label="Estático GMV (min riesgo)")
+    plt.plot(curva_max_retorno, label="Estático Max retorno")
+    plt.plot(curva_sharpe, label=f"Estático Tangente (Sharpe, rf={rf_estatico_2005_2009:.2%})")
+    
+    plt.plot(curva_gmv_roll, "--", label="Rolling GMV")
+    plt.plot(curva_max_retorno_roll, "--", label="Rolling Max retorno")
+    plt.plot(curva_sharpe_roll, "--", label="Rolling Tangente (Sharpe)")
+    
+    plt.plot(curva_optima_con_rf, "--", label=f"Cartera óptima función riesgo (alpha={ALPHA})")
+    
+    plt.title("Backtest (Universo completo)")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
     main()
