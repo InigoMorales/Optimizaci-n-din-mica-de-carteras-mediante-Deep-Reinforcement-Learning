@@ -15,39 +15,37 @@ activos = [
     # Emerging Markets
     "EEM",
     # Europa
-    "^STOXX50E", "^IBEX",
+    "^IBEX",
     # Japón
     "EWJ",
     # Commodities oro y plata
-    "GLD", "SLV",
+    "GC=F", "SI=F",
     # Renta Fija
-    "AGG", "TLT", "SHY", "HYG",
+    "AGG", "TLT", "SHY",
     # Alternativos
-    "VNQ", "BIL",
+    "^RMZ",
     # Risk-free yield
     "^IRX"
 ]
 
-vista_histroica = "2005-01-01" #Lo que vería el inversor en 2010
-start = "2010-01-01"
-end   = "2020-01-01"
+start = "2004-01-01"
+end   = "2026-01-01"
 
 #data = yf.download(activos, start=start, end=end, auto_adjust=False, progress=False)
-data_completa_2005_2019 = yf.download(activos, start=vista_histroica, end=end, auto_adjust=False, progress=False)
-
+data_completa_2004_2025 = yf.download(activos, start=start, end=end, auto_adjust=False, progress=False)
 
 # ============================================================
 # PRECIOS AJUSTADOS
 # ============================================================
 
-precios = data_completa_2005_2019["Adj Close"]
+precios = data_completa_2004_2025["Adj Close"]
 precios.index = pd.to_datetime(precios.index).normalize()
 precios = precios.sort_index()
 precios = precios[~precios.index.duplicated(keep="first")]
 precios = precios.ffill()
 
 # Guardamos precios completos
-precios.to_csv(BASE_DIR / "precios_2005_2019.csv")
+precios.to_csv(BASE_DIR / "precios_2004_2025.csv")
 
 # ============================================================
 # SEPARAR IRX (yield anual en %)
@@ -68,8 +66,8 @@ precios_activos_completos = precios.drop(columns=["^IRX"])
 #pct.change calcula la variación porcentual respecto a su valor anterior: (P_t - P_{t-1}) / P_{t-1}
 #el iloc[1:] se usa para eliminar la primera fila ya que no podrás calcular la variación del 1er dato
 retornos_activos_completos = precios_activos_completos.pct_change().iloc[1:]
-retornos_activos_completos = retornos_activos_completos.dropna(how="all")
-retornos_activos_completos.to_csv(BASE_DIR / "retornos_2005_2019.csv")
+retornos_activos_completos = retornos_activos_completos.fillna(0.0)
+retornos_activos_completos.to_csv(BASE_DIR / "retornos_2004_2025.csv")
 
 # ============================================================
 # CONSTRUCCIÓN CORRECTA DEL RISK-FREE
@@ -82,14 +80,14 @@ rf_anual_completo = rf_anual_completo.iloc[1:]
 
 # Alinear índices con retornos activos
 rf_anual_completo = rf_anual_completo.reindex(retornos_activos_completos.index).ffill()
-rf_anual_completo.to_csv(BASE_DIR / "rf_2005_2019.csv")
+rf_anual_completo.to_csv(BASE_DIR / "rf_2004_2025.csv")
 
 # ============================================================
 # SPLIT TEMPORAL
 # ============================================================
 
 fecha_fin_train = "2016-01-01"
-fecha_fin_validation = "2019-01-01"
+fecha_fin_validation = "2020-01-01"
 
 # Precios
 precios_train = precios_activos_completos.loc[
@@ -123,13 +121,13 @@ rf_diario = (1.0 + rf_anual_completo) ** (1.0 / 252.0) - 1.0
 # GUARDAR TODO
 # ============================================================
 
-retornos_train.to_csv(BASE_DIR / "retornos_train_2010_2015.csv")
-retornos_validation.to_csv(BASE_DIR / "retornos_validation_2016_2018.csv")
-retornos_test.to_csv(BASE_DIR / "retornos_test_2019.csv")
+retornos_train.to_csv(BASE_DIR / "retornos_train_2004_2015.csv")
+retornos_validation.to_csv(BASE_DIR / "retornos_validation_2016_2019.csv")
+retornos_test.to_csv(BASE_DIR / "retornos_test_2020_2025.csv")
 
-rf_train.to_csv(BASE_DIR / "rf_train_2010_2015.csv")
-rf_validation.to_csv(BASE_DIR / "rf_validation_2016_2018.csv")
-rf_test.to_csv(BASE_DIR / "rf_test_2019.csv")
+rf_train.to_csv(BASE_DIR / "rf_train_2004_2015.csv")
+rf_validation.to_csv(BASE_DIR / "rf_validation_2016_2019.csv")
+rf_test.to_csv(BASE_DIR / "rf_test_2020_2025.csv")
 
 # ============================================================
 # CONSTRUCCIÓN DE FEATURES (SIN LEAKAGE)
@@ -179,24 +177,24 @@ def construir_features(ret: pd.DataFrame) -> pd.DataFrame:
 # ============================================================
 
 features_full = construir_features(retornos_activos_completos)
-features_full.to_csv(BASE_DIR / "features_2005_2019.csv")
+features_full.to_csv(BASE_DIR / "features_2004_2025.csv")
 
 features_train = features_full.loc[retornos_train.index.intersection(features_full.index)]
 features_validation = features_full.loc[retornos_validation.index.intersection(features_full.index)]
 features_test = features_full.loc[retornos_test.index.intersection(features_full.index)]
 
-features_train.to_csv(BASE_DIR / "features_train_2010_2015.csv")
-features_validation.to_csv(BASE_DIR / "features_validation_2016_2018.csv")
-features_test.to_csv(BASE_DIR / "features_test_2019.csv")
+features_train.to_csv(BASE_DIR / "features_train_2004_2015.csv")
+features_validation.to_csv(BASE_DIR / "features_validation_2016_2019.csv")
+features_test.to_csv(BASE_DIR / "features_test_2020_2025.csv")
 
 print("Dataset generado correctamente.")
 print("Media rf anual (train):", rf_train.mean() * 100.0 , "%")
 print("Media retorno S&P500 anual (train):", retornos_train["^GSPC"].mean() * 252 *100.0, "%")
 print("Media retorno Nasdaq anual (train):", retornos_train["^NDX"].mean() * 252 *100.0, "%")
-print("Media retorno oro anual (train):", retornos_train["GLD"].mean() * 252 *100.0, "%")
+print("Media retorno oro anual (train):", retornos_train["GC=F"].mean() * 252 *100.0, "%")
 print("Media retorno IBEX35 anual (train):", retornos_train["^IBEX"].mean() * 252 *100.0, "%")
 print("Media retorno IBEX35 anual:", retornos_activos_completos["^IBEX"].mean() * 252 *100.0, "%")
-print("Media retorno Plata anual (train):", retornos_train["SLV"].mean() * 252 *100.0, "%")
+print("Media retorno Plata anual (train):", retornos_train["SI=F"].mean() * 252 *100.0, "%")
 print("Media retorno Japón anual (train):", retornos_train["EWJ"].mean() * 252 *100.0, "%")
 print("Media retorno Renta Fija L/P anual (train):", retornos_train["TLT"].mean() * 252 *100.0, "%")
 print("Media retorno Renta Fija S/P anual (train):", retornos_train["SHY"].mean() * 252 *100.0, "%")
