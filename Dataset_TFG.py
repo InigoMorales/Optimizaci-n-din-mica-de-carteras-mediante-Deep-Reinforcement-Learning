@@ -1,200 +1,237 @@
-import yfinance as yf
-import pandas as pd
-import numpy as np
+# src/Dataset/Dataset_TFG.py
+from __future__ import annotations
+
+import json
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
+import numpy as np
+import pandas as pd
+import yfinance as yf
+
 
 # ============================================================
-# UNIVERSO DE ACTIVOS
+# CONFIG
 # ============================================================
 
-activos = [
-    # USA SP500 Nasdaq y Small Caps
-    "^GSPC", "^NDX", "IWM",
-    # Emerging Markets
-    "EEM",
-    # Europa
-    "^IBEX",
-    # Japón
-    "EWJ",
-    # Commodities oro y plata
-    "GC=F", "SI=F",
-    # Renta Fija
-    "AGG", "TLT", "SHY",
-    # Alternativos
-    "^RMZ",
-    # Risk-free yield
-    "^IRX"
+ACTIVOS = [
+    "^GSPC",  # S&P500
+    "^NDX",   # Nasdaq 100
+    "IWM",    # US small caps
+    "EEM",    # Emerging Markets
+    "EWP",    # España (ETF)
+    "EWJ",    # Japón (ETF)
+    "FEZ",    # Euro Stoxx 50 (ETF)
+    "GC=F",   # Oro (futuro)
+    "SI=F",   # Plata (futuro)
+    "AGG",    # Bonds aggregate
+    "TLT",    # Long bonds
+    "SHY",    # Short bonds
+    "^IRX",   # Risk-free proxy (yield anual en %)
 ]
 
-start = "2004-01-01"
-end   = "2026-01-01"
+FECHA_INICIO = "2004-01-01"
+FECHA_FIN = "2026-01-01" 
 
-#data = yf.download(activos, start=start, end=end, auto_adjust=False, progress=False)
-data_completa_2004_2025 = yf.download(activos, start=start, end=end, auto_adjust=False, progress=False)
+FECHA_FIN_TRAIN = "2016-01-01"
+FECHA_FIN_VALIDATION = "2020-01-01"
 
-# ============================================================
-# PRECIOS AJUSTADOS
-# ============================================================
-
-precios = data_completa_2004_2025["Adj Close"]
-precios.index = pd.to_datetime(precios.index).normalize()
-precios = precios.sort_index()
-precios = precios[~precios.index.duplicated(keep="first")]
-precios = precios.ffill()
-
-# Guardamos precios completos
-precios.to_csv(BASE_DIR / "precios_2004_2025.csv")
+FACTOR_ANUALIZACION = 252.0
 
 # ============================================================
-# SEPARAR IRX (yield anual en %)
+# PATHS
 # ============================================================
 
-if "^IRX" not in precios.columns:
-    raise ValueError("No se encontró '^IRX' en los datos descargados.")
+def _encontrar_raiz_proyecto() -> Path:
+    """
+    Busca hacia arriba hasta encontrar carpeta 'Datos' o 'src'.
+    Si no encuentra, usa el directorio padre del archivo.
+    """
+    p = Path(__file__).resolve()
+    for parent in [p.parent] + list(p.parents):
+        if (parent / "Datos").exists() or (parent / "src").exists():
+            return parent
+    return p.parent
 
-irx_yield = precios["^IRX"].copy()
+RAIZ_PROYECTO = _encontrar_raiz_proyecto()
+CARPETA_DATOS = RAIZ_PROYECTO / "Datos"
 
-# Activos de riesgo (quitar IRX)
-precios_activos_completos = precios.drop(columns=["^IRX"])
-
-# ============================================================
-# RETORNOS ACTIVOS DE RIESGO (diarios)
-# ============================================================
-
-#pct.change calcula la variación porcentual respecto a su valor anterior: (P_t - P_{t-1}) / P_{t-1}
-#el iloc[1:] se usa para eliminar la primera fila ya que no podrás calcular la variación del 1er dato
-retornos_activos_completos = precios_activos_completos.pct_change().iloc[1:]
-retornos_activos_completos = retornos_activos_completos.fillna(0.0)
-retornos_activos_completos.to_csv(BASE_DIR / "retornos_2004_2025.csv")
-
-# ============================================================
-# CONSTRUCCIÓN CORRECTA DEL RISK-FREE
-# ============================================================
-
-# IRX está en yield anual en porcentaje (ej: 4.25) por eso se divide entre 100
-
-rf_anual_completo = irx_yield / 100.0
-rf_anual_completo = rf_anual_completo.iloc[1:]
-
-# Alinear índices con retornos activos
-rf_anual_completo = rf_anual_completo.reindex(retornos_activos_completos.index).ffill()
-rf_anual_completo.to_csv(BASE_DIR / "rf_2004_2025.csv")
+for sub in ["Raw", "Train", "Validation", "Test"]:
+    (CARPETA_DATOS / sub).mkdir(parents=True, exist_ok=True)
 
 # ============================================================
-# SPLIT TEMPORAL
+# FEATURES (sin leakage)
 # ============================================================
 
-fecha_fin_train = "2016-01-01"
-fecha_fin_validation = "2020-01-01"
+def construir_features(retornos: pd.DataFrame) -> pd.DataFrame:
+    """
+    Features por activo:
+      - momentum 20/60 (suma rolling)
+      - volatilidad 20/60 (std rolling)
 
-# Precios
-precios_train = precios_activos_completos.loc[
-    (precios_activos_completos.index < fecha_fin_train) & (precios_activos_completos.index >= start)]
+    Importante:
+      - shift(1) para evitar leakage (usar info hasta t-1).
+      - dropna al final.
+    """
+    ret = retornos.sort_index().copy()
 
-precios_validation = precios_activos_completos.loc[
-    (precios_activos_completos.index >= fecha_fin_train) & (precios_activos_completos.index < fecha_fin_validation)
-]
-precios_test = precios_activos_completos.loc[precios_activos_completos.index >= fecha_fin_validation]
+    mom20 = ret.rolling(20).sum().add_suffix("_mom20")
+    mom60 = ret.rolling(60).sum().add_suffix("_mom60")
 
-# Retornos
-retornos_train = retornos_activos_completos.loc[
-    (retornos_activos_completos.index < fecha_fin_train) & (retornos_activos_completos.index >= start)]
+    vol20 = ret.rolling(20).std(ddof=1).add_suffix("_vol20")
+    vol60 = ret.rolling(60).std(ddof=1).add_suffix("_vol60")
 
-retornos_validation = retornos_activos_completos.loc[
-    (retornos_activos_completos.index >= fecha_fin_train) & (retornos_activos_completos.index < fecha_fin_validation)]
+    feats = pd.concat([mom20, mom60, vol20, vol60], axis=1)
 
-retornos_test = retornos_activos_completos.loc[retornos_activos_completos.index >= fecha_fin_validation]
-
-# rf
-rf_train = rf_anual_completo.loc[rf_anual_completo.index < fecha_fin_train]
-rf_validation = rf_anual_completo.loc[
-    (rf_anual_completo.index >= fecha_fin_train) &
-    (rf_anual_completo.index < fecha_fin_validation)
-]
-rf_test = rf_anual_completo.loc[rf_anual_completo.index >= fecha_fin_validation]
-
-rf_diario = (1.0 + rf_anual_completo) ** (1.0 / 252.0) - 1.0
-
-# ============================================================
-# GUARDAR TODO
-# ============================================================
-
-retornos_train.to_csv(BASE_DIR / "retornos_train_2004_2015.csv")
-retornos_validation.to_csv(BASE_DIR / "retornos_validation_2016_2019.csv")
-retornos_test.to_csv(BASE_DIR / "retornos_test_2020_2025.csv")
-
-rf_train.to_csv(BASE_DIR / "rf_train_2004_2015.csv")
-rf_validation.to_csv(BASE_DIR / "rf_validation_2016_2019.csv")
-rf_test.to_csv(BASE_DIR / "rf_test_2020_2025.csv")
-
-# ============================================================
-# CONSTRUCCIÓN DE FEATURES (SIN LEAKAGE)
-# ============================================================
-
-def construir_features(ret: pd.DataFrame) -> pd.DataFrame:
-    ret = ret.sort_index().copy()
-
-    # Momentum
-    momentum_20 = ret.rolling(20).sum().add_suffix("_momentum20")
-    momentum_60 = ret.rolling(60).sum().add_suffix("_momentum60")
-
-    # Volatilidad
-    volatilidad_20 = ret.rolling(20).std(ddof=1).add_suffix("_volatilidad20")
-    volatilidad_60 = ret.rolling(60).std(ddof=1).add_suffix("_volatilidad60")
-
-    # Correlación media 60d
-    def correlacion_media(window_df: pd.DataFrame) -> float:
-        correlacion = window_df.corr().to_numpy()
-        n = correlacion.shape[0]
-        if n <= 1:
-            return 0.0
-        return float((correlacion.sum() - np.trace(correlacion)) / (n * (n - 1)))
-
-    correlacion_media_vals = []
-    idx = ret.index
-
-    for t in range(len(ret)):
-        if t < 60:
-            correlacion_media_vals.append(np.nan)
-        else:
-            w = ret.iloc[t-60:t]
-            correlacion_media_vals.append(correlacion_media(w))
-
-    correlacion_media_60 = pd.Series(correlacion_media_vals, index=idx, name="mean_corr_60")
-
-    feats = pd.concat([momentum_20, momentum_60, volatilidad_20, volatilidad_60, correlacion_media_60], axis=1)
-
-    # IMPORTANTE: evitar leakage
+    # Evitar leakage: las features del día t solo usan info hasta t-1
     feats = feats.shift(1)
 
     feats = feats.dropna()
     return feats
 
+
 # ============================================================
-# GENERAR FEATURES
+# MAIN PIPELINE
 # ============================================================
 
-features_full = construir_features(retornos_activos_completos)
-features_full.to_csv(BASE_DIR / "features_2004_2025.csv")
+def main() -> None:
+    # =========================
+    # 1) DESCARGA
+    # =========================
+    data = yf.download(
+        ACTIVOS,
+        start=FECHA_INICIO,
+        end=FECHA_FIN,
+        auto_adjust=False,
+        progress=False,
+    )
 
-features_train = features_full.loc[retornos_train.index.intersection(features_full.index)]
-features_validation = features_full.loc[retornos_validation.index.intersection(features_full.index)]
-features_test = features_full.loc[retornos_test.index.intersection(features_full.index)]
+    if "Adj Close" not in data:
+        raise ValueError("No se encontró 'Adj Close' en la descarga de yfinance.")
 
-features_train.to_csv(BASE_DIR / "features_train_2004_2015.csv")
-features_validation.to_csv(BASE_DIR / "features_validation_2016_2019.csv")
-features_test.to_csv(BASE_DIR / "features_test_2020_2025.csv")
+    precios = data["Adj Close"].copy()
+    precios.index = pd.to_datetime(precios.index).normalize()
+    precios = precios.sort_index()
+    precios = precios[~precios.index.duplicated(keep="first")]
 
-print("Dataset generado correctamente.")
-print("Media rf anual (train):", rf_train.mean() * 100.0 , "%")
-print("Media retorno S&P500 anual (train):", retornos_train["^GSPC"].mean() * 252 *100.0, "%")
-print("Media retorno Nasdaq anual (train):", retornos_train["^NDX"].mean() * 252 *100.0, "%")
-print("Media retorno oro anual (train):", retornos_train["GC=F"].mean() * 252 *100.0, "%")
-print("Media retorno IBEX35 anual (train):", retornos_train["^IBEX"].mean() * 252 *100.0, "%")
-print("Media retorno IBEX35 anual:", retornos_activos_completos["^IBEX"].mean() * 252 *100.0, "%")
-print("Media retorno Plata anual (train):", retornos_train["SI=F"].mean() * 252 *100.0, "%")
-print("Media retorno Japón anual (train):", retornos_train["EWJ"].mean() * 252 *100.0, "%")
-print("Media retorno Renta Fija L/P anual (train):", retornos_train["TLT"].mean() * 252 *100.0, "%")
-print("Media retorno Renta Fija S/P anual (train):", retornos_train["SHY"].mean() * 252 *100.0, "%")
+    # Forward fill para festivos desalineados y pequeños huecos (ya validaste que bloques max = 1)
+    precios = precios.ffill()
+
+    # Guardar precios raw (incluye IRX)
+    precios.to_csv(CARPETA_DATOS / "Raw" / "precios_adjclose_full.csv")
+
+    # =========================
+    # 2) SEPARAR IRX y ACTIVOS RIESGO
+    # =========================
+    if "^IRX" not in precios.columns:
+        raise ValueError("No se encontró '^IRX' en los datos descargados.")
+
+    irx_yield = precios["^IRX"].copy()  # yield anual en %
+    precios_activos = precios.drop(columns=["^IRX"])
+
+    # =========================
+    # 3) RETORNOS DIARIOS (riesgo)
+    # =========================
+    retornos = precios_activos.pct_change(fill_method=None)
+    retornos = retornos.dropna(how="any")  # elimina primera fila y cualquier fila incompleta
+
+    # Guardar retornos full (riesgo)
+    retornos.to_csv(CARPETA_DATOS / "Raw" / "retornos_full.csv")
+
+    # =========================
+    # 4) RF ANUAL y RF DIARIO
+    # =========================
+    # IRX es yield anual en % -> anual decimal
+    rf_anual = (irx_yield / 100.0).reindex(retornos.index).ffill()
+
+    # Convertir a diario (compatible con reward diario del entorno)
+    rf_diario = (1.0 + rf_anual) ** (1.0 / FACTOR_ANUALIZACION) - 1.0
+
+    # Guardar rf full
+    rf_anual.to_csv(CARPETA_DATOS / "Raw" / "rf_anual_full.csv")
+    rf_diario.to_csv(CARPETA_DATOS / "Raw" / "rf_diario_full.csv")
+
+    # =========================
+    # 5) FEATURES sin leakage
+    # =========================
+    features = construir_features(retornos)
+    features.to_csv(CARPETA_DATOS / "Raw" / "features_full.csv")
+
+    # =========================
+    # 6) ESTADO B: features + retornos_lag1
+    # =========================
+    retornos_lag1 = retornos.shift(1).loc[features.index]
+
+    datos_estado = pd.concat([features, retornos_lag1], axis=1).dropna()
+
+    # Alineación final obligatoria
+    fechas = datos_estado.index.intersection(retornos.index).intersection(rf_diario.index)
+    datos_estado = datos_estado.loc[fechas]
+    retornos_ok = retornos.loc[fechas]
+    rf_diario_ok = rf_diario.loc[fechas]
+    rf_anual_ok = rf_anual.loc[fechas]
+
+    # Guardar estado full
+    datos_estado.to_csv(CARPETA_DATOS / "Raw" / "datos_estado_full.csv")
+
+    # =========================
+    # 7) SPLIT TEMPORAL
+    # =========================
+    datos_estado_train = datos_estado.loc[datos_estado.index < FECHA_FIN_TRAIN]
+    datos_estado_validation = datos_estado.loc[
+        (datos_estado.index >= FECHA_FIN_TRAIN) &
+        (datos_estado.index < FECHA_FIN_VALIDATION)
+    ]
+    datos_estado_test = datos_estado.loc[datos_estado.index >= FECHA_FIN_VALIDATION]
+
+    retornos_train = retornos_ok.loc[datos_estado_train.index]
+    retornos_validation = retornos_ok.loc[datos_estado_validation.index]
+    retornos_test = retornos_ok.loc[datos_estado_test.index]
+
+    rf_diario_train = rf_diario_ok.loc[datos_estado_train.index]
+    rf_diario_validation = rf_diario_ok.loc[datos_estado_validation.index]
+    rf_diario_test = rf_diario_ok.loc[datos_estado_test.index]
+
+    rf_anual_train = rf_anual_ok.loc[datos_estado_train.index]
+    rf_anual_validation = rf_anual_ok.loc[datos_estado_validation.index]
+    rf_anual_test = rf_anual_ok.loc[datos_estado_test.index]
+
+    # =========================
+    # 8) GUARDAR SPLITS
+    # =========================
+    # Estado
+    datos_estado_train.to_csv(CARPETA_DATOS / "Train" / "datos_estado_train.csv")
+    datos_estado_validation.to_csv(CARPETA_DATOS / "Validation" / "datos_estado_validation.csv")
+    datos_estado_test.to_csv(CARPETA_DATOS / "Test" / "datos_estado_test.csv")
+
+    # Retornos (reward)
+    retornos_train.to_csv(CARPETA_DATOS / "Train" / "retornos_train.csv")
+    retornos_validation.to_csv(CARPETA_DATOS / "Validation" / "retornos_validation.csv")
+    retornos_test.to_csv(CARPETA_DATOS / "Test" / "retornos_test.csv")
+
+    # rf diario (SAC)
+    rf_diario_train.to_csv(CARPETA_DATOS / "Train" / "rf_diario_train.csv")
+    rf_diario_validation.to_csv(CARPETA_DATOS / "Validation" / "rf_diario_validation.csv")
+    rf_diario_test.to_csv(CARPETA_DATOS / "Test" / "rf_diario_test.csv")
+
+    # rf anual (Markowitz)
+    rf_anual_train.to_csv(CARPETA_DATOS / "Train" / "rf_anual_train.csv")
+    rf_anual_validation.to_csv(CARPETA_DATOS / "Validation" / "rf_anual_validation.csv")
+    rf_anual_test.to_csv(CARPETA_DATOS / "Test" / "rf_anual_test.csv")
+
+    # Universo (reproducibilidad)
+    with open(CARPETA_DATOS / "Raw" / "universo_tickers.json", "w", encoding="utf-8") as f:
+        json.dump(ACTIVOS, f, ensure_ascii=False, indent=2)
+
+    # =========================
+    # 9) LOG FINAL
+    # =========================
+    print("✅ Dataset generado correctamente.")
+    print("Ruta Datos:", CARPETA_DATOS.resolve())
+    print("Full:", datos_estado.shape, retornos_ok.shape, rf_diario_ok.shape)
+    print("Train:", datos_estado_train.shape, retornos_train.shape, rf_diario_train.shape)
+    print("Validation:", datos_estado_validation.shape, retornos_validation.shape, rf_diario_validation.shape)
+    print("Test:", datos_estado_test.shape, retornos_test.shape, rf_diario_test.shape)
+
+
+if __name__ == "__main__":
+    main()
