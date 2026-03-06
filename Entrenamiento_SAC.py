@@ -1,10 +1,10 @@
+from __future__ import annotations
 import numpy as np
 import pandas as pd
 import torch
 import os
 import random
 
-from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 from entorno_cartera import EntornoCartera
