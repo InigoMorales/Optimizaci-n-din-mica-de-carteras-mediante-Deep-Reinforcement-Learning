@@ -55,37 +55,33 @@ class ConfigEntrenamiento:
     tamano_batch: int = 256
     pasos_warmup: int = 10_000
 
-    gamma: float = 0.99
-    tau: float = 0.005
+    gamma: float = 0.9
+    tau: float = 0.0005
 
-    lr_actor: float = 3e-4
-    lr_criticos: float = 3e-4
-    lr_alpha: float = 3e-4
+    lr_actor: float = 1e-4
+    lr_criticos: float = 5e-4
+    lr_alpha: float = 1e-3
 
     target_entropy: Optional[float] = None
-    max_concentracion_total_extra: float = 7.0
+    max_concentracion_total_extra: float = 10.0
 
     frecuencia_actualizacion: int = 1
     actualizaciones_por_step: int = 1
 
     ventana_log_recompensa: int = 200
-    frecuencia_log: int = 500
+    frecuencia_log: int = 1000
 
-    reward_scale: float = 1000.0
-    offset_target_entropy: float = -5.0
+    reward_scale: float = 3000.0
+    offset_target_entropy: float = -1.0
 
 
 # ============================================================
-# Script principal de entrenamiento
+#               Script principal de entrenamiento
 # ============================================================
 
-def entrenar_sac(
-    entorno: EntornoCartera,
-    config: ConfigEntrenamiento,
-    devolver_agente: bool = False,
-) -> Dict[str, List[float]]:
+def entrenar_sac(entorno: EntornoCartera, config: ConfigEntrenamiento, devolver_agente: bool = False) -> Dict[str, List[float]]:
+    
     fijar_semillas(config.semilla)
-
     dispositivo = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Dimensión del estado: lo que devuelve el entorno
@@ -96,18 +92,13 @@ def entrenar_sac(
     dimension_accion = int(entorno.numero_activos_totales)
 
     # ============================================================
-    # Buffer
+    #           Buffer
     # ============================================================
-    buffer = BufferRepeticion(
-        capacidad_maxima=config.tamano_buffer,
-        dimension_estado=dimension_estado,
-        dimension_accion=dimension_accion,
-        dispositivo=dispositivo,
-        semilla=config.semilla,
-    )
+    buffer = BufferRepeticion(capacidad_maxima=config.tamano_buffer, dimension_estado=dimension_estado, 
+                              dimension_accion=dimension_accion, dispositivo=dispositivo, semilla=config.semilla)
 
     # ============================================================
-    # Agente SAC
+    #           Agente SAC
     # ============================================================
     agente = AgenteSAC(
         dimension_estado=dimension_estado,
