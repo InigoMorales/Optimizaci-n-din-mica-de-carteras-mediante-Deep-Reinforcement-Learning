@@ -136,7 +136,7 @@ def construir_frontera_eficiente(
     numero_puntos: int = 60,
     rf: float | None = None,
     solo_largos: bool = True,
-    factor_anualizacion: int | None = 252,
+    factor_anualizacion: int | None = 52,
     mostrar_grafico: bool = True,
 ):
     retornos_historicos = retornos_historicos.dropna()
@@ -228,8 +228,8 @@ def construir_frontera_eficiente(
 # ============================================================
 
 def markowitz_gmv_rolling(
-        entorno, retornos_full: pd.DataFrame, window_years: int = 5, rebalance_cada: int = 21, 
-        anualizar: int = 252, solo_largos: bool = True, min_obs: int = 252
+        entorno, retornos_full: pd.DataFrame, window_years: int = 5, rebalance_cada: int = 4, 
+        anualizar: int = 52, solo_largos: bool = True, min_obs: int = 52
         ):
     
     retornos_full = retornos_full.sort_index()
@@ -264,8 +264,8 @@ def markowitz_gmv_rolling(
     return politica
 
 def markowitz_max_retorno_rolling(
-    entorno, retornos_full: pd.DataFrame, window_years: int = 5, rebalance_cada: int = 21,
-    anualizar: int = 252, solo_largos: bool = True, min_obs: int = 252
+    entorno, retornos_full: pd.DataFrame, window_years: int = 5, rebalance_cada: int = 4,
+    anualizar: int = 52, solo_largos: bool = True, min_obs: int = 52
 ):
     retornos_full = retornos_full.sort_index()
     fechas_env = entorno.retornos_diarios.index
@@ -300,8 +300,8 @@ def markowitz_tangente_rolling(
     entorno,
     retornos_full: pd.DataFrame,   # 2005-2020 (retornos diarios)
     rf_full: pd.Series,            # 2005-2020 (rf anual decimal)
-    window_years: int = 5, rebalance_cada: int = 21, anualizar: int = 252,
-    solo_largos: bool = True, rf_floor: float = 0.0, min_obs: int = 252
+    window_years: int = 5, rebalance_cada: int =4, anualizar: int = 52,
+    solo_largos: bool = True, rf_floor: float = 0.0, min_obs: int = 52
 ):
     """
     Entorno empieza en 2010 (capital 1000 en 2010), pero la estimación usa histórico externo:
@@ -350,8 +350,8 @@ def markowitz_tangente_rolling(
 
 def cartera_optima_en_funcion_riesgo(
         entorno, retornos_full: pd.DataFrame, rf_full: pd.Series, alpha: float,
-        window_years: int = 5, rebalance_cada: int = 21, anualizar: int = 252,
-    solo_largos: bool = True, rf_floor: float = 0.0, min_obs: int = 252):
+        window_years: int = 5, rebalance_cada: int = 4, anualizar: int = 52,
+    solo_largos: bool = True, rf_floor: float = 0.0, min_obs: int = 52):
     """
     Coge la cartera tangente (max Sharpe) y mezcla con rf 
     según el alpha (aversión al riesgo) de cada ususario"""

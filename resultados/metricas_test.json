@@ -1,0 +1,72 @@
+{
+  "muy_conservador": {
+    "valor_final": 1176.523171741099,
+    "retorno_total": 0.1771259343717455,
+    "cagr": 0.02746280607868612,
+    "volatilidad_anual": 0.0034244074645162765,
+    "sharpe": 0.20847740386495292,
+    "sortino": 10.349566449921522,
+    "max_drawdown": -0.0027127851374012524,
+    "calmar": 10.123472625994431,
+    "turnover": 0.033034980490212806,
+    "peso_cash_medio": null,
+    "exposicion_media": null,
+    "n_activos_medio": 5.5
+  },
+  "conservador": {
+    "valor_final": 1369.8886522220496,
+    "retorno_total": 0.36789165879458485,
+    "cagr": 0.053423102417063495,
+    "volatilidad_anual": 0.06824298241275835,
+    "sharpe": 0.40474323022558056,
+    "sortino": 0.9248366101776575,
+    "max_drawdown": -0.1211687105219692,
+    "calmar": 0.4408984975323089,
+    "turnover": 0.19312706303339383,
+    "peso_cash_medio": null,
+    "exposicion_media": null,
+    "n_activos_medio": 8.340764331210192
+  },
+  "normal": {
+    "valor_final": 1946.3955111463913,
+    "retorno_total": 0.9396694606666351,
+    "cagr": 0.11635266039707126,
+    "volatilidad_anual": 0.12189342279394788,
+    "sharpe": 0.7441078180499555,
+    "sortino": 1.461571711557993,
+    "max_drawdown": -0.15313299553217008,
+    "calmar": 0.7598144344575821,
+    "turnover": 0.11833750438629827,
+    "peso_cash_medio": null,
+    "exposicion_media": null,
+    "n_activos_medio": 8.573248407643312
+  },
+  "arriesgado": {
+    "valor_final": 1410.5601757469904,
+    "retorno_total": 0.4060885518695849,
+    "cagr": 0.05825411215631582,
+    "volatilidad_anual": 0.09630974522267023,
+    "sharpe": 0.35899436825478614,
+    "sortino": 0.8091340228502418,
+    "max_drawdown": -0.18054119736042606,
+    "calmar": 0.32266381860766863,
+    "turnover": 0.14306202888107417,
+    "peso_cash_medio": null,
+    "exposicion_media": null,
+    "n_activos_medio": 8.251592356687897
+  },
+  "muy_arriesgado": {
+    "valor_final": 1615.2465610046095,
+    "retorno_total": 0.6092714029148745,
+    "cagr": 0.08225148249634406,
+    "volatilidad_anual": 0.14031685363933466,
+    "sharpe": 0.44232574445678935,
+    "sortino": 0.9016830941628936,
+    "max_drawdown": -0.22417252377972752,
+    "calmar": 0.36691152470212884,
+    "turnover": 0.14693398026923743,
+    "peso_cash_medio": null,
+    "exposicion_media": null,
+    "n_activos_medio": 7.544585987261146
+  }
+}

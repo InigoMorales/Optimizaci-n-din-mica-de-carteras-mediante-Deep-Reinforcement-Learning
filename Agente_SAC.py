@@ -30,6 +30,13 @@ class MetricasActualizacion:
     log_prob_medio: float
     log_prob_std: float
 
+    # Reutilizamos estos nombres para no romper el resto del pipeline
+    # aunque ahora ya no sean "concentraciones Dirichlet":
+    #   concentracion_min         -> mu_min
+    #   concentracion_max         -> mu_max
+    #   concentracion_media       -> mu_media
+    #   concentracion_total_media -> std_media
+    #   concentracion_total_std   -> std_std
     concentracion_min: float
     concentracion_max: float
     concentracion_media: float
@@ -43,17 +50,14 @@ class MetricasActualizacion:
 
 class AgenteSAC:
     """
-    Implementación de Soft Actor-Critic (SAC) para carteras long-only
-    con cash explícito.
+    Soft Actor-Critic para carteras long-only con cash explícito,
+    usando política gaussiana sobre logits + softmax.
 
-    La acción tiene dimensión:
-        dimension_accion = numero_activos_riesgo + 1
-
-    y representa:
-        [w_1, ..., w_N, w_cash]
-
-    El agente no conoce el entorno.
-    Recibe lotes de transiciones desde el replay buffer.
+    Convención:
+    - El actor produce logits gaussianos.
+    - La acción final son pesos long-only que suman 1 tras softmax.
+    - log_prob se calcula sobre los logits gaussianos pre-softmax.
+    - Alpha se ajusta automáticamente como en SAC clásico.
     """
 
     def __init__(
@@ -70,9 +74,9 @@ class AgenteSAC:
         dimensiones_ocultas: Tuple[int, int] = (256, 256),
         epsilon_numerico: float = 1e-6,
         max_norm_gradiente: float = 1.0,
-        reward_scale: float = 1000.0,
-        offset_target_entropy: float = -5.0,
-        max_concentracion_total_extra: float = 7.0,
+        reward_scale: float = 5.0,
+        offset_target_entropy: float = 0.0,
+        max_concentracion_total_extra: float = 7.0,  # compatibilidad, ya no se usa
     ) -> None:
         self.dimension_estado = int(dimension_estado)
         self.dimension_accion = int(dimension_accion)
@@ -84,17 +88,16 @@ class AgenteSAC:
         self.max_norm_gradiente = float(max_norm_gradiente)
         self.reward_scale = float(reward_scale)
         self.offset_target_entropy = float(offset_target_entropy)
-        self.max_concentracion_total_extra = float(max_concentracion_total_extra)
+
+        hidden_dim = int(dimensiones_ocultas[0])
 
         # ============================================================
         # Redes principales
         # ============================================================
         self.actor = Actor(
-            dimension_estado=self.dimension_estado,
-            dimension_accion=self.dimension_accion,
-            dimensiones_ocultas=dimensiones_ocultas,
-            epsilon_numerico=self.epsilon_numerico,
-            max_concentracion_total_extra=self.max_concentracion_total_extra,
+            obs_dim=self.dimension_estado,
+            act_dim=self.dimension_accion,
+            hidden_dim=hidden_dim,
         ).to(self.dispositivo)
 
         self.critic1 = Critic(
@@ -110,7 +113,7 @@ class AgenteSAC:
         ).to(self.dispositivo)
 
         # ============================================================
-        # Redes target (solo critics)
+        # Targets
         # ============================================================
         self.critic1_target = Critic(
             dimension_estado=self.dimension_estado,
@@ -147,14 +150,9 @@ class AgenteSAC:
         # Alpha automático
         # ============================================================
         if target_entropy is None:
-            alpha_ref = torch.ones(
-                self.dimension_accion,
-                dtype=torch.float32,
-                device=self.dispositivo,
-            )
-            dist_ref = torch.distributions.Dirichlet(alpha_ref)
-            entropia_uniforme = float(dist_ref.entropy().detach().cpu().item())
-            target_entropy = entropia_uniforme + self.offset_target_entropy
+            # SAC clásico en acción continua:
+            # target por defecto ~ -dimensión de acción
+            target_entropy = -float(self.dimension_accion) + float(self.offset_target_entropy)
 
         self.target_entropy = float(target_entropy)
 
@@ -164,6 +162,7 @@ class AgenteSAC:
             device=self.dispositivo,
             requires_grad=True,
         )
+
         self.optimizador_alpha = torch.optim.Adam(
             [self.log_alpha],
             lr=tasa_aprendizaje_alpha,
@@ -171,41 +170,38 @@ class AgenteSAC:
 
     @property
     def alpha(self) -> torch.Tensor:
-        """
-        Coeficiente de entropía:
-            alpha = exp(log_alpha)
-        """
         return torch.exp(self.log_alpha)
 
+    # ============================================================
+    # Acción
+    # ============================================================
     def seleccionar_accion(
         self,
         estado: torch.Tensor,
         determinista: bool = False,
     ) -> torch.Tensor:
-        """
-        Devuelve solo la acción para interactuar con el entorno.
-        """
-        salida = self.actor.obtener_accion(estado, determinista=determinista)
-        return salida.accion
+        if determinista:
+            accion, _, _ = self.actor.deterministic_action(estado)
+            return accion
+
+        accion, _, _, _ = self.actor.sample_action(estado)
+        return accion
 
     # ============================================================
-    # Actualización de críticos
+    # Críticos
     # ============================================================
     def actualizar_criticos(
         self,
         lote: LoteTransiciones,
     ) -> Tuple[
-        torch.Tensor,  # perdida_critic1
-        torch.Tensor,  # perdida_critic2
-        torch.Tensor,  # valor_q_min_medio
-        torch.Tensor,  # q1_medio
-        torch.Tensor,  # q2_medio
-        torch.Tensor,  # target_q_medio
-        torch.Tensor,  # gap_critics_medio
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
     ]:
-        """
-        Actualiza critic1 y critic2 con MSE frente al target SAC.
-        """
         estado = lote.estado
         accion = lote.accion
         recompensa = lote.recompensa
@@ -213,28 +209,25 @@ class AgenteSAC:
         terminado = lote.terminado
 
         with torch.no_grad():
-            salida_actor_siguiente = self.actor.obtener_accion(
-                siguiente_estado,
-                determinista=False,
+            accion_siguiente, log_prob_siguiente, _, _ = self.actor.sample_action(
+                siguiente_estado
             )
-            accion_siguiente = salida_actor_siguiente.accion
-            log_prob_siguiente = salida_actor_siguiente.log_prob_accion
 
-            valor_q1_target = self.critic1_target(siguiente_estado, accion_siguiente)
-            valor_q2_target = self.critic2_target(siguiente_estado, accion_siguiente)
-            valor_q_min_target = torch.min(valor_q1_target, valor_q2_target)
+            q1_target = self.critic1_target(siguiente_estado, accion_siguiente)
+            q2_target = self.critic2_target(siguiente_estado, accion_siguiente)
+            q_min_target = torch.min(q1_target, q2_target)
 
             recompensa_escalada = self.reward_scale * recompensa
 
             target_q = recompensa_escalada + self.gamma * (1.0 - terminado) * (
-                valor_q_min_target - self.alpha.detach() * log_prob_siguiente
+                q_min_target - self.alpha.detach() * log_prob_siguiente
             )
 
-        valor_q1 = self.critic1(estado, accion)
-        valor_q2 = self.critic2(estado, accion)
+        q1 = self.critic1(estado, accion)
+        q2 = self.critic2(estado, accion)
 
-        perdida_critic1 = F.mse_loss(valor_q1, target_q)
-        perdida_critic2 = F.mse_loss(valor_q2, target_q)
+        perdida_critic1 = F.mse_loss(q1, target_q)
+        perdida_critic2 = F.mse_loss(q2, target_q)
 
         self.optimizador_critic1.zero_grad(set_to_none=True)
         perdida_critic1.backward()
@@ -252,76 +245,84 @@ class AgenteSAC:
         )
         self.optimizador_critic2.step()
 
-        valor_q_min_medio = torch.mean(torch.min(valor_q1, valor_q2)).detach()
-        q1_medio = torch.mean(valor_q1).detach()
-        q2_medio = torch.mean(valor_q2).detach()
+        q_min_medio = torch.mean(torch.min(q1, q2)).detach()
+        q1_medio = torch.mean(q1).detach()
+        q2_medio = torch.mean(q2).detach()
         target_q_medio = torch.mean(target_q).detach()
-        gap_critics_medio = torch.mean(torch.abs(valor_q1 - valor_q2)).detach()
+        gap_medio = torch.mean(torch.abs(q1 - q2)).detach()
 
         return (
             perdida_critic1,
             perdida_critic2,
-            valor_q_min_medio,
+            q_min_medio,
             q1_medio,
             q2_medio,
             target_q_medio,
-            gap_critics_medio,
+            gap_medio,
         )
 
     # ============================================================
-    # Actualización del actor
+    # Actor
     # ============================================================
     def actualizar_actor(
         self,
         lote: LoteTransiciones,
     ) -> Tuple[
-        torch.Tensor,  # perdida_actor
-        torch.Tensor,  # entropia_media
-        torch.Tensor,  # log_prob_medio
-        torch.Tensor,  # log_prob_std
-        torch.Tensor,  # concentracion_min
-        torch.Tensor,  # concentracion_max
-        torch.Tensor,  # concentracion_media
-        torch.Tensor,  # concentracion_total_media
-        torch.Tensor,  # concentracion_total_std
-        torch.Tensor,  # accion_min
-        torch.Tensor,  # accion_max
-        torch.Tensor,  # peso_cash_medio
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
     ]:
-        """
-        Actualiza el actor y además calcula métricas para depuración
-        de la política Dirichlet.
-        """
         estado = lote.estado
 
-        salida_actor = self.actor.obtener_accion(estado, determinista=False)
-        accion_nueva = salida_actor.accion
-        log_prob_accion = salida_actor.log_prob_accion
-        entropia_media = torch.mean(salida_actor.entropia_dirichlet).detach()
+        accion_nueva, log_prob_accion, mu, std = self.actor.sample_action(estado)
 
-        concentraciones = self.actor.forward(estado)
-        concentracion_total = torch.sum(concentraciones, dim=1)
+        # Como métrica de "entropía" para logging, usamos -log_prob medio.
+        # No es la entropía exacta diferencial de toda la política transformada,
+        # pero sí una métrica consistente con el ajuste de alpha en SAC.
+        entropia_media = torch.mean(-log_prob_accion).detach()
 
         log_prob_medio = torch.mean(log_prob_accion).detach()
         log_prob_std = torch.std(log_prob_accion).detach()
 
-        concentracion_min = torch.min(concentraciones).detach()
-        concentracion_max = torch.max(concentraciones).detach()
-        concentracion_media = torch.mean(concentraciones).detach()
-        concentracion_total_media = torch.mean(concentracion_total).detach()
-        concentracion_total_std = torch.std(concentracion_total).detach()
+        mu_min = torch.min(mu).detach()
+        mu_max = torch.max(mu).detach()
+        mu_media = torch.mean(mu).detach()
+        std_media = torch.mean(std).detach()
+        std_std = torch.std(std).detach()
 
         accion_min = torch.min(accion_nueva).detach()
         accion_max = torch.max(accion_nueva).detach()
         peso_cash_medio = torch.mean(accion_nueva[:, -1]).detach()
 
-        valor_q1 = self.critic1(estado, accion_nueva)
-        valor_q2 = self.critic2(estado, accion_nueva)
-        valor_q_min = torch.min(valor_q1, valor_q2)
+        # Stop-gradient sobre log_std: Q no propaga gradientes a log_std
+        log_std_actual = torch.clamp(
+            self.actor.log_std, self.actor.log_std_min, self.actor.log_std_max
+        )
+        log_prob_sg = (
+            log_prob_accion
+            + log_std_actual.sum()
+            - log_std_actual.detach().sum()
+        )
+
+        q1 = self.critic1(estado, accion_nueva)
+        q2 = self.critic2(estado, accion_nueva)
+        q_min = torch.min(q1, q2)
+
+        # Regularización L2 sobre mu para evitar explosión
+        reg_mu = 1e-3 * (mu ** 2).mean()
 
         perdida_actor = torch.mean(
-            self.alpha.detach() * log_prob_accion - valor_q_min
-        )
+            self.alpha.detach() * log_prob_sg - q_min
+        ) + reg_mu
 
         self.optimizador_actor.zero_grad(set_to_none=True)
         perdida_actor.backward()
@@ -336,88 +337,77 @@ class AgenteSAC:
             entropia_media,
             log_prob_medio,
             log_prob_std,
-            concentracion_min,
-            concentracion_max,
-            concentracion_media,
-            concentracion_total_media,
-            concentracion_total_std,
+            mu_min,
+            mu_max,
+            mu_media,
+            std_media,
+            std_std,
             accion_min,
             accion_max,
             peso_cash_medio,
         )
 
     # ============================================================
-    # Actualización automática de alpha
+    # Alpha
     # ============================================================
     def actualizar_alpha(
         self,
         lote: LoteTransiciones,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Ajuste automático de alpha para alcanzar target_entropy.
+        # Con gradiente activo para que log_std se actualice vía esta pérdida
+        _, log_prob_accion, _, _ = self.actor.sample_action(lote.estado)
 
-        Devuelve:
-          - perdida_alpha
-          - residual_entropia_medio
-        """
-        estado = lote.estado
-
-        with torch.no_grad():
-            salida_actor = self.actor.obtener_accion(estado, determinista=False)
-            log_prob_accion = salida_actor.log_prob_accion
-
-        residual_entropia = log_prob_accion + self.target_entropy
+        residual_entropia = log_prob_accion - self.target_entropy
         residual_entropia_medio = torch.mean(residual_entropia).detach()
 
-        perdida_alpha = torch.mean(-self.log_alpha * residual_entropia)
+        # Pérdida de alpha (solo actualiza log_alpha)
+        perdida_alpha = torch.mean(-self.log_alpha * residual_entropia.detach())
 
         self.optimizador_alpha.zero_grad(set_to_none=True)
         perdida_alpha.backward()
         self.optimizador_alpha.step()
-
         with torch.no_grad():
-            self.log_alpha.clamp_(min=-20.0, max=2.0)
+            self.log_alpha.clamp_(min=-5.0, max=4.0)
 
-        return perdida_alpha, residual_entropia_medio
+        # Pérdida de log_std: converge log_prob → target_entropy sin influencia del Q
+        if isinstance(self.actor.log_std, torch.nn.Parameter):
+            perdida_log_std = torch.mean((log_prob_accion - self.target_entropy) ** 2)
+            self.optimizador_actor.zero_grad(set_to_none=True)
+            perdida_log_std.backward()
+            self.optimizador_actor.step()
+
+        return perdida_alpha.detach(), residual_entropia_medio
 
     # ============================================================
-    # Soft update de targets
+    # Targets
     # ============================================================
     def actualizar_targets_suavemente(self) -> None:
-        """
-        Actualización suave:
-            theta_target = tau * theta_online + (1 - tau) * theta_target
-        """
         with torch.no_grad():
-            for parametro_online, parametro_target in zip(
+            for online, target in zip(
                 self.critic1.parameters(),
                 self.critic1_target.parameters(),
             ):
-                parametro_target.data.mul_(1.0 - self.tau)
-                parametro_target.data.add_(self.tau * parametro_online.data)
+                target.data.mul_(1.0 - self.tau)
+                target.data.add_(self.tau * online.data)
 
-            for parametro_online, parametro_target in zip(
+            for online, target in zip(
                 self.critic2.parameters(),
                 self.critic2_target.parameters(),
             ):
-                parametro_target.data.mul_(1.0 - self.tau)
-                parametro_target.data.add_(self.tau * parametro_online.data)
+                target.data.mul_(1.0 - self.tau)
+                target.data.add_(self.tau * online.data)
 
     # ============================================================
-    # Paso completo de entrenamiento
+    # Paso completo
     # ============================================================
-    def paso_entrenamiento(self, lote: LoteTransiciones) -> MetricasActualizacion:
-        """
-        Ejecuta un paso completo:
-        - actualizar críticos
-        - actualizar actor
-        - actualizar alpha
-        - actualizar targets suavemente
-        """
+    def paso_entrenamiento(
+        self,
+        lote: LoteTransiciones,
+    ) -> MetricasActualizacion:
         (
             perdida_critic1,
             perdida_critic2,
-            valor_q_min_medio,
+            q_min_medio,
             q1_medio,
             q2_medio,
             target_q_medio,
@@ -429,11 +419,11 @@ class AgenteSAC:
             entropia_media,
             log_prob_medio,
             log_prob_std,
-            concentracion_min,
-            concentracion_max,
-            concentracion_media,
-            concentracion_total_media,
-            concentracion_total_std,
+            mu_min,
+            mu_max,
+            mu_media,
+            std_media,
+            std_std,
             accion_min,
             accion_max,
             peso_cash_medio,
@@ -450,18 +440,18 @@ class AgenteSAC:
             coeficiente_entropia_alpha=float(self.alpha.detach().cpu().item()),
             entropia_media=float(entropia_media.cpu().item()),
             residual_entropia_medio=float(residual_entropia_medio.cpu().item()),
-            valor_q_min_medio=float(valor_q_min_medio.cpu().item()),
+            valor_q_min_medio=float(q_min_medio.cpu().item()),
             q1_medio=float(q1_medio.cpu().item()),
             q2_medio=float(q2_medio.cpu().item()),
             target_q_medio=float(target_q_medio.cpu().item()),
             gap_critics_medio=float(gap_critics_medio.cpu().item()),
             log_prob_medio=float(log_prob_medio.cpu().item()),
             log_prob_std=float(log_prob_std.cpu().item()),
-            concentracion_min=float(concentracion_min.cpu().item()),
-            concentracion_max=float(concentracion_max.cpu().item()),
-            concentracion_media=float(concentracion_media.cpu().item()),
-            concentracion_total_media=float(concentracion_total_media.cpu().item()),
-            concentracion_total_std=float(concentracion_total_std.cpu().item()),
+            concentracion_min=float(mu_min.cpu().item()),
+            concentracion_max=float(mu_max.cpu().item()),
+            concentracion_media=float(mu_media.cpu().item()),
+            concentracion_total_media=float(std_media.cpu().item()),
+            concentracion_total_std=float(std_std.cpu().item()),
             accion_min=float(accion_min.cpu().item()),
             accion_max=float(accion_max.cpu().item()),
             peso_cash_medio=float(peso_cash_medio.cpu().item()),
