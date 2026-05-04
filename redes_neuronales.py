@@ -76,7 +76,7 @@ class Actor(nn.Module):
         temperature: float = 5.0,
         eps_mix_uniforme: float = 0.0,
         bias_cash_inicial: float = 0.0,
-        peso_max_activo: float = 0.75,
+        peso_max_activo: float = 0.943,
     ):
         super().__init__()
 

@@ -345,6 +345,7 @@ class AgenteSAC:
             accion_min,
             accion_max,
             peso_cash_medio,
+            log_prob_accion.detach(),  # para actualizar_alpha — sin warning, tensor ya en device
         )
 
     # ============================================================
@@ -353,25 +354,26 @@ class AgenteSAC:
     def actualizar_alpha(
         self,
         lote: LoteTransiciones,
+        log_prob_detached: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        # Con gradiente activo para que log_std se actualice vía esta pérdida
-        _, log_prob_accion, _, _ = self.actor.sample_action(lote.estado)
-
-        residual_entropia = log_prob_accion - self.target_entropy
+        # log_prob_detached viene de actualizar_actor (ya sin grafo computacional).
+        # Lo usamos para alpha — no necesita gradiente hacia el actor.
+        residual_entropia = log_prob_detached - self.target_entropy
         residual_entropia_medio = torch.mean(residual_entropia).detach()
 
-        # Pérdida de alpha (solo actualiza log_alpha)
+        # Actualizar alpha
         perdida_alpha = torch.mean(-self.log_alpha * residual_entropia.detach())
-
         self.optimizador_alpha.zero_grad(set_to_none=True)
         perdida_alpha.backward()
         self.optimizador_alpha.step()
         with torch.no_grad():
             self.log_alpha.clamp_(min=-5.0, max=4.0)
 
-        # Pérdida de log_std: converge log_prob → target_entropy sin influencia del Q
+        # perdida_log_std necesita grafo fresco — el de actualizar_actor ya fue liberado.
+        # Solo es un forward del actor (sin critics), coste pequeño.
         if isinstance(self.actor.log_std, torch.nn.Parameter):
-            perdida_log_std = torch.mean((log_prob_accion - self.target_entropy) ** 2)
+            _, log_prob_fresco, _, _ = self.actor.sample_action(lote.estado)
+            perdida_log_std = torch.mean((log_prob_fresco - self.target_entropy) ** 2)
             self.optimizador_actor.zero_grad(set_to_none=True)
             perdida_log_std.backward()
             self.optimizador_actor.step()
@@ -427,9 +429,13 @@ class AgenteSAC:
             accion_min,
             accion_max,
             peso_cash_medio,
+            log_prob_accion_detached,
         ) = self.actualizar_actor(lote)
 
-        perdida_alpha, residual_entropia_medio = self.actualizar_alpha(lote)
+        # Pasamos log_prob ya detacheado — alpha no necesita grafo del actor
+        perdida_alpha, residual_entropia_medio = self.actualizar_alpha(
+            lote, log_prob_detached=log_prob_accion_detached
+        )
         self.actualizar_targets_suavemente()
 
         return MetricasActualizacion(

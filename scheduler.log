@@ -1,0 +1,24 @@
+2026-05-04 15:26:27  INFO      Scheduler iniciado.
+2026-05-04 15:26:27  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-04 15:26:27  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-04 15:27:12  INFO      Scheduler iniciado.
+2026-05-04 15:27:12  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-04 15:27:12  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-04 15:27:12  INFO      Hoy es lunes — sin rebalanceos pendientes.
+2026-05-04 15:27:12  INFO      Proximo rebalanceo: viernes 08/05 a las 22:00
+2026-05-04 15:27:12  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-04 15:31:19  INFO      Scheduler detenido manualmente.
+2026-05-04 15:31:43  INFO      Scheduler iniciado.
+2026-05-04 15:31:43  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-04 15:31:43  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-04 15:31:43  INFO      Hoy es lunes — sin rebalanceos pendientes.
+2026-05-04 15:31:43  INFO      Proximo rebalanceo: viernes 08/05 a las 22:00
+2026-05-04 15:31:43  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-04 15:32:35  INFO      Scheduler detenido manualmente.
+2026-05-04 15:33:04  INFO      Scheduler iniciado.
+2026-05-04 15:33:04  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-04 15:33:04  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-04 15:33:04  INFO      Hoy es lunes — sin rebalanceos pendientes.
+2026-05-04 15:33:04  INFO      Proximo rebalanceo: viernes 08/05 a las 22:00
+2026-05-04 15:33:04  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-04 15:34:18  INFO      Scheduler detenido manualmente.

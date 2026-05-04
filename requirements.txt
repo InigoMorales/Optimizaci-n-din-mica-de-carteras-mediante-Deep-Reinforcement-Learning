@@ -1,0 +1,9 @@
+streamlit>=1.32.0
+streamlit-autorefresh>=1.0.1
+plotly>=5.18.0
+yfinance>=0.2.36
+torch>=2.0.0
+bcrypt>=4.1.0
+pandas>=2.0.0
+numpy>=1.24.0
+schedule>=1.2.0

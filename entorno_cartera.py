@@ -209,10 +209,10 @@ class EntornoCartera:
         self.riesgo = riesgo
 
     def _interpolar_lambda(self, riesgo: float, lam_min: float, lam_max: float) -> float:
-        # Interpolación cuadrática: perfiles conservadores penalizan mucho más,
-        # perfiles arriesgados penalizan mucho menos que con interpolación lineal.
-        # conservador (0.3): ~0.49x del max | arriesgado (0.7): ~0.09x del max
-        return lam_max * (1.0 - riesgo) ** 2 + lam_min * riesgo ** 2
+        # Interpolación lineal: monótona decreciente de lam_max (riesgo=0) a lam_min (riesgo=1).
+        # La versión cuadrática anterior tenía forma de U — conservador y arriesgado recibían
+        # la misma penalización, y normal recibía menos que ambos. Roto.
+        return lam_max * (1.0 - riesgo) + lam_min * riesgo
 
     @property
     def lambda_dd(self) -> float:
@@ -324,6 +324,11 @@ class EntornoCartera:
         """
         Actualiza covarianzas y correlaciones con ventana rolling.
         Si no hay suficientes datos, mantiene las matrices base.
+
+        varianza_max se actualiza como máximo histórico acumulado:
+        solo puede subir (cuando hay periodos de alta volatilidad),
+        nunca bajar. Esto evita que en periodos tranquilos la escala
+        de pen_varianza se infle artificialmente.
         """
         if self.indice_tiempo >= self.ventana_covarianza:
             inicio = self.indice_tiempo - self.ventana_covarianza
@@ -334,7 +339,7 @@ class EntornoCartera:
             self.covarianza_actual = cov
 
             var_max = float(np.max(np.diag(cov)))
-            if var_max > 1e-12:
+            if var_max > self._varianza_max:
                 self._varianza_max = var_max
 
             self.correlacion_actual = self._covarianza_a_correlacion(cov)
@@ -343,13 +348,16 @@ class EntornoCartera:
         """
         Varianza de cartera w^T * Sigma_ext * w normalizada por varianza_max.
         Cash tiene covarianza 0 con todo → actúa como diversificador natural.
-        ~100% cash: penalización implícita = riesgo (para diferenciar perfiles).
+        ~100% cash: penalización = max(r², 0.03) para incentivar exposición
+        proporcional al perfil. El suelo de 0.03 garantiza que muy_conservador
+        (r²=0.01) tenga incentivo suficiente para invertir en renta fija corta
+        (AGG). Perfiles r>=0.30 no se ven afectados (r²>=0.09 > 0.03).
         """
         pesos_riesgo = pesos_actuales[:-1]
         suma_riesgo = float(pesos_riesgo.sum())
 
         if suma_riesgo < 0.01:
-            return float(self.riesgo)
+            return max(self.riesgo ** 2, 0.03)
 
         n = self.numero_activos_riesgo
         cov_ext = np.zeros((n + 1, n + 1))
@@ -448,13 +456,16 @@ class EntornoCartera:
 
         self._actualizar_matrices_rolling()
 
-        pen_dd = self.lambda_dd * self.drawdown_actual
+        # pen_dd desactivada: incentivaba ir a cash como mínimo local fácil
+        # el drawdown sigue calculándose y registrándose en info para monitorización
+        pen_dd = 0.0
+        # pen_dd = self.lambda_dd * self.drawdown_actual
         pen_varianza = self.lambda_varianza * self._penalizacion_varianza(pesos_actuales)
         pen_correlacion = self.lambda_correlacion * self._penalizacion_correlacion(pesos_actuales)
         pen_turnover = self.lambda_turnover * rotacion
         pen_concentracion = self.lambda_concentracion * self._penalizacion_concentracion(pesos_actuales)
 
-        pen_total = pen_dd + pen_varianza + pen_correlacion + pen_turnover + pen_concentracion
+        pen_total = pen_varianza + pen_correlacion + pen_turnover + pen_concentracion
 
         recompensa = retorno_cartera - coste - pen_total
 
