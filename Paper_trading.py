@@ -1303,28 +1303,31 @@ def pantalla_app() -> None:
 
     precios_hoy = descargar_precios_horarios()
 
-    # Guardar precio de referencia la primera vez (o si cambia el perfil)
+    # Precio de referencia: primer precio tras el último rebalanceo
     ref_key = f"px_ref_{perfil}"
     if ref_key not in st.session_state and not precios_hoy.empty:
-        st.session_state[ref_key] = precios_hoy.iloc[-1].to_dict()
+        st.session_state[ref_key] = precios_hoy.iloc[0].to_dict()
 
     px_ref    = st.session_state.get(ref_key, {})
     px_actual = precios_hoy.iloc[-1].to_dict() if not precios_hoy.empty else {}
+    fecha_px  = str(precios_hoy.index[-1]) if not precios_hoy.empty else "N/A"
+
+    # Guardar precios actuales para mostrar en detalle
+    st.session_state["px_actual_detalle"] = px_actual
+    st.session_state["fecha_px_detalle"]  = fecha_px
 
     if px_ref and px_actual:
         valor = 0.0
         for i, activo in enumerate(ACTIVOS_RIESGO):
-            peso_i   = float(pr[i]) if i < len(pr) else 0.0
-            px_r     = float(px_ref.get(activo, 0.0))
-            px_a     = float(px_actual.get(activo, 0.0))
+            peso_i = float(pr[i]) if i < len(pr) else 0.0
+            px_r   = float(px_ref.get(activo, 0.0))
+            px_a   = float(px_actual.get(activo, 0.0))
             if px_r > 1e-8 and px_a > 1e-8:
-                # unidades * precio actual
                 valor += peso_i * valor_base * (px_a / px_r)
             else:
                 valor += peso_i * valor_base
-        # Cash no varía
         valor += p_cash * valor_base
-        valor = max(valor, 0.01)
+        valor  = max(valor, 0.01)
     else:
         valor = valor_base
 
@@ -1668,6 +1671,34 @@ def pantalla_app() -> None:
             st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
 
     st.markdown(f"<hr style='border-color:{border};'>", unsafe_allow_html=True)
+    # ── Precios actuales de mercado ───────────────────────────────────────
+    st.markdown("#### 💹 Precios actuales")
+    px_det   = st.session_state.get("px_actual_detalle", {})
+    fecha_det = st.session_state.get("fecha_px_detalle", "N/A")
+
+    # ── Precios actuales ──────────────────────────────────────────────────
+    st.markdown("#### 💹 Precios actuales de mercado")
+    px_det    = st.session_state.get("px_actual_detalle", {})
+    fecha_det = st.session_state.get("fecha_px_detalle", "N/A")
+
+    if px_det:
+        st.caption(f"Último precio descargado: {fecha_det}")
+        filas = []
+        for i, activo in enumerate(ACTIVOS_RIESGO):
+            peso_i = float(pr[i]) if i < len(pr) else 0.0
+            px_a   = float(px_det.get(activo, 0.0))
+            filas.append({
+                "Ticker":  activo,
+                "Nombre":  NOMBRES_ACTIVOS.get(activo, activo),
+                "Precio":  f"${px_a:,.2f}" if px_a > 0 else "N/D",
+                "Peso":    f"{peso_i*100:.1f}%",
+            })
+        df_px = pd.DataFrame(filas)
+        st.dataframe(df_px, hide_index=True, use_container_width=True,
+                     height=min(50 + len(df_px) * 36, 380))
+    else:
+        st.info("Precios no disponibles — pulsa Actualizar mercado")
+
     # Historial de movimientos
     movs = obtener_movimientos(usr["id"])
     if movs:
