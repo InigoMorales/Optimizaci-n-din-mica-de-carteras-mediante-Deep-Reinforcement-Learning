@@ -15,9 +15,15 @@ from __future__ import annotations
 import sys
 import json
 import uuid
-import sqlite3
 import warnings
 import threading
+try:
+    import psycopg2
+    import psycopg2.extras
+    USE_POSTGRES = True
+except ImportError:
+    import sqlite3
+    USE_POSTGRES = False
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -181,20 +187,44 @@ def calcular_perfil_desde_puntuacion(media: float) -> str:
 _db_lock = threading.Lock()
 
 
+def _get_database_url() -> str:
+    """Lee la DATABASE_URL de los secrets de Streamlit o variable de entorno."""
+    import os
+    try:
+        return st.secrets["DATABASE_URL"]
+    except Exception:
+        return os.environ.get("DATABASE_URL", "")
+
+
 @contextmanager
 def get_conn():
-    with _db_lock:
-        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+    """Conexión a PostgreSQL (Supabase) o SQLite como fallback."""
+    db_url = _get_database_url()
+    if db_url and USE_POSTGRES:
+        with _db_lock:
+            conn = psycopg2.connect(db_url)
+            conn.autocommit = False
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
+    else:
+        with _db_lock:
+            conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+            _exec(conn, "PRAGMA journal_mode=WAL")
+            _exec(conn, "PRAGMA foreign_keys=ON")
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
 
 
 def init_db() -> None:
@@ -239,6 +269,25 @@ def init_db() -> None:
         """)
 
 
+def _q(sql: str) -> str:
+    """Adapta placeholders: ? para SQLite, %s para PostgreSQL."""
+    db_url = _get_database_url()
+    if db_url and USE_POSTGRES:
+        return sql.replace("?", "%s")
+    return sql
+
+
+def _exec(conn, sql: str, params=()) -> "cursor":
+    """Ejecuta SQL compatible con SQLite y PostgreSQL."""
+    db_url = _get_database_url()
+    if db_url and USE_POSTGRES:
+        cur = conn.cursor()
+        cur.execute(_q(sql), params)
+        return cur
+    else:
+        return _exec(conn, sql, params)
+
+
 def hash_password(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=12)).decode()
 
@@ -258,7 +307,7 @@ def registrar_usuario(email: str, nombre: str, pw: str) -> tuple[bool, str]:
     try:
         uid = str(uuid.uuid4())
         with get_conn() as conn:
-            conn.execute(
+            _exec(conn, 
                 "INSERT INTO usuarios (id,email,nombre,password_hash,fecha_registro) "
                 "VALUES (?,?,?,?,?)",
                 (uid, email.lower().strip(), nombre.strip(),
@@ -273,7 +322,7 @@ def registrar_usuario(email: str, nombre: str, pw: str) -> tuple[bool, str]:
 
 def login_usuario(email: str, pw: str) -> tuple[bool, str, Optional[dict]]:
     with get_conn() as conn:
-        row = conn.execute(
+        row = _exec(conn, 
             "SELECT id,nombre,password_hash,perfil_asignado,"
             "cuestionario_completado,tema FROM usuarios WHERE email=?",
             (email.lower().strip(),),
@@ -292,14 +341,14 @@ def login_usuario(email: str, pw: str) -> tuple[bool, str, Optional[dict]]:
 
 def guardar_respuestas(usuario_id: str, resps: list[dict], perfil: str) -> None:
     with get_conn() as conn:
-        conn.execute("DELETE FROM respuestas_cuestionario WHERE usuario_id=?", (usuario_id,))
+        _exec(conn, "DELETE FROM respuestas_cuestionario WHERE usuario_id=?", (usuario_id,))
         for r in resps:
-            conn.execute(
+            _exec(conn, 
                 "INSERT INTO respuestas_cuestionario (usuario_id,pregunta_id,puntuacion,fecha) "
                 "VALUES (?,?,?,?)",
                 (usuario_id, r["pregunta_id"], r["puntuacion"], datetime.now().isoformat()),
             )
-        conn.execute(
+        _exec(conn, 
             "UPDATE usuarios SET perfil_asignado=?,cuestionario_completado=1 WHERE id=?",
             (perfil, usuario_id),
         )
@@ -307,17 +356,17 @@ def guardar_respuestas(usuario_id: str, resps: list[dict], perfil: str) -> None:
 
 def actualizar_perfil_db(uid: str, perfil: str) -> None:
     with get_conn() as conn:
-        conn.execute("UPDATE usuarios SET perfil_asignado=? WHERE id=?", (perfil, uid))
+        _exec(conn, "UPDATE usuarios SET perfil_asignado=? WHERE id=?", (perfil, uid))
 
 
 def actualizar_tema_db(uid: str, tema: str) -> None:
     with get_conn() as conn:
-        conn.execute("UPDATE usuarios SET tema=? WHERE id=?", (tema, uid))
+        _exec(conn, "UPDATE usuarios SET tema=? WHERE id=?", (tema, uid))
 
 
 def obtener_saldo(uid: str) -> float:
     with get_conn() as conn:
-        row = conn.execute("SELECT saldo FROM usuarios WHERE id=?", (uid,)).fetchone()
+        row = _exec(conn, "SELECT saldo FROM usuarios WHERE id=?", (uid,)).fetchone()
     if not row or row[0] is None:
         return 10_000.0
     try:
@@ -328,12 +377,12 @@ def obtener_saldo(uid: str) -> float:
 
 def actualizar_saldo(uid: str, saldo_nuevo: float) -> None:
     with get_conn() as conn:
-        conn.execute("UPDATE usuarios SET saldo=? WHERE id=?", (float(saldo_nuevo), uid))
+        _exec(conn, "UPDATE usuarios SET saldo=? WHERE id=?", (float(saldo_nuevo), uid))
 
 
 def registrar_movimiento(uid: str, tipo: str, importe: float, nota: str = "") -> None:
     with get_conn() as conn:
-        conn.execute(
+        _exec(conn, 
             "INSERT INTO movimientos (usuario_id, tipo, importe, fecha, nota) VALUES (?,?,?,?,?)",
             (uid, tipo, float(importe), datetime.now().isoformat(), nota),
         )
@@ -341,7 +390,7 @@ def registrar_movimiento(uid: str, tipo: str, importe: float, nota: str = "") ->
 
 def obtener_movimientos(uid: str, limit: int = 10) -> list[dict]:
     with get_conn() as conn:
-        rows = conn.execute(
+        rows = _exec(conn, 
             "SELECT tipo, importe, fecha, nota FROM movimientos "
             "WHERE usuario_id=? ORDER BY fecha DESC LIMIT ?",
             (uid, limit),
@@ -352,7 +401,7 @@ def obtener_movimientos(uid: str, limit: int = 10) -> list[dict]:
 def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
     """Devuelve el último registro del historial de un usuario."""
     with get_conn() as conn:
-        row = conn.execute(
+        row = _exec(conn, 
             "SELECT fecha, valor_cartera, pesos_json "
             "FROM historial_cartera WHERE usuario_id = ? "
             "ORDER BY fecha DESC LIMIT 1",
@@ -379,7 +428,7 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
 
 def guardar_historial_db(uid: str, valor: float, pesos: np.ndarray, ret: float) -> None:
     with get_conn() as conn:
-        conn.execute(
+        _exec(conn, 
             "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana) "
             "VALUES (?,?,?,?,?)",
             (uid, datetime.now().isoformat(), float(valor), json.dumps(pesos.tolist()), float(ret)),
@@ -388,7 +437,7 @@ def guardar_historial_db(uid: str, valor: float, pesos: np.ndarray, ret: float) 
 
 def cargar_historial_db(uid: str) -> list[dict]:
     with get_conn() as conn:
-        rows = conn.execute(
+        rows = _exec(conn, 
             "SELECT fecha,valor_cartera,pesos_json,retorno_semana "
             "FROM historial_cartera WHERE usuario_id=? ORDER BY fecha ASC",
             (uid,),
@@ -431,14 +480,14 @@ def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
     desde = (datetime.now() - timedelta(hours=ventana_horas)).isoformat()
     with get_conn() as conn:
         try:
-            rows = conn.execute(
+            rows = _exec(conn, 
                 "SELECT fecha, valor_cartera, twr FROM historial_cartera "
                 "WHERE usuario_id=? AND fecha>=? ORDER BY fecha ASC",
                 (usuario_id, desde),
             ).fetchall()
         except Exception:
             # Fallback si la columna twr no existe aún
-            rows = conn.execute(
+            rows = _exec(conn, 
                 "SELECT fecha, valor_cartera, 1.0 FROM historial_cartera "
                 "WHERE usuario_id=? AND fecha>=? ORDER BY fecha ASC",
                 (usuario_id, desde),
@@ -1431,6 +1480,7 @@ def pantalla_app() -> None:
                     yaxis=dict(showgrid=True, gridcolor=border, zeroline=True,
                                zerolinecolor=sub_c, zerolinewidth=1,
                                showline=False, ticksuffix="%",
+                               tickformat=".3f",
                                tickfont=dict(size=11, color=sub_c), side="right"),
                     hoverlabel=dict(bgcolor="#0d1929" if dark else "#ffffff",
                                    bordercolor=border,
