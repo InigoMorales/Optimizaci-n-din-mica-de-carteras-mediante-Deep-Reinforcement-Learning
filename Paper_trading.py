@@ -277,7 +277,7 @@ def _q(sql: str) -> str:
     return sql
 
 
-def _exec(conn, sql: str, params=()) -> "cursor":
+def _exec(conn, sql: str, params=()):
     """Ejecuta SQL compatible con SQLite y PostgreSQL."""
     db_url = _get_database_url()
     if db_url and USE_POSTGRES:
@@ -285,7 +285,7 @@ def _exec(conn, sql: str, params=()) -> "cursor":
         cur.execute(_q(sql), params)
         return cur
     else:
-        return _exec(conn, sql, params)
+        return conn.execute(sql, params)
 
 
 def hash_password(pw: str) -> str:
