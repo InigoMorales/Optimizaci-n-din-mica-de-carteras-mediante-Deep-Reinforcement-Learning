@@ -146,6 +146,58 @@ def _exec(conn, sql: str, params=()):
     return _exec(conn, sql, params)
 
 
+def init_db() -> None:
+    """Crea las tablas en Supabase si no existen."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                nombre TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                fecha_registro TEXT NOT NULL,
+                perfil_asignado TEXT,
+                cuestionario_completado INTEGER DEFAULT 0,
+                tema TEXT DEFAULT 'dark',
+                saldo REAL DEFAULT 10000.0
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS respuestas_cuestionario (
+                id SERIAL PRIMARY KEY,
+                usuario_id TEXT NOT NULL REFERENCES usuarios(id),
+                pregunta_id TEXT NOT NULL,
+                puntuacion INTEGER NOT NULL,
+                fecha TEXT NOT NULL
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS historial_cartera (
+                id SERIAL PRIMARY KEY,
+                usuario_id TEXT NOT NULL REFERENCES usuarios(id),
+                fecha TEXT NOT NULL,
+                valor_cartera REAL NOT NULL,
+                pesos_json TEXT NOT NULL,
+                retorno_semana REAL DEFAULT 0,
+                twr REAL DEFAULT 1.0,
+                precios_ref_json TEXT,
+                es_rebalanceo INTEGER DEFAULT 0
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS movimientos (
+                id SERIAL PRIMARY KEY,
+                usuario_id TEXT NOT NULL REFERENCES usuarios(id),
+                tipo TEXT NOT NULL,
+                importe REAL NOT NULL,
+                fecha TEXT NOT NULL,
+                nota TEXT
+            )
+        """)
+        log.info("Tablas verificadas/creadas en BD.")
+
+
 def obtener_todos_usuarios() -> list[dict]:
     """Devuelve todos los usuarios con cuestionario completado y perfil asignado."""
     with get_conn() as conn:
@@ -513,6 +565,7 @@ def main() -> None:
     args = parser.parse_args()
 
     log.info("Scheduler iniciado.")
+    init_db()
     log.info(f"BD: {DB_PATH}")
     log.info("Rebalanceo programado: cada viernes a las 22:00")
 

@@ -58,3 +58,30 @@
 2026-05-09 11:59:43  INFO      Rebalanceo completado: 2/2 usuarios procesados.
 2026-05-09 11:59:43  INFO      ============================================================
 2026-05-09 11:59:43  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-09 12:11:18  INFO      Scheduler iniciado.
+2026-05-09 12:11:18  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-09 12:11:18  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-09 12:11:18  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-09 12:11:18  INFO      ============================================================
+2026-05-09 12:11:18  INFO      REBALANCEO SEMANAL — 2026-05-09 12:11:18
+2026-05-09 12:11:18  INFO      ============================================================
+2026-05-09 12:11:18  INFO      Descargando precios de mercado...
+2026-05-09 12:11:19  INFO      Precios descargados: 30 semanas, 16 activos
+2026-05-09 12:15:52  INFO      Scheduler iniciado.
+2026-05-09 12:15:52  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-09 12:15:52  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-09 12:15:52  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-09 12:15:52  INFO      ============================================================
+2026-05-09 12:15:52  INFO      REBALANCEO SEMANAL — 2026-05-09 12:15:52
+2026-05-09 12:15:52  INFO      ============================================================
+2026-05-09 12:15:52  INFO      Descargando precios de mercado...
+2026-05-09 12:15:52  INFO      Precios descargados: 30 semanas, 16 activos
+2026-05-09 12:16:52  INFO      Scheduler iniciado.
+2026-05-09 12:16:52  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-09 12:16:52  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-09 12:16:52  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-09 12:16:52  INFO      ============================================================
+2026-05-09 12:16:52  INFO      REBALANCEO SEMANAL — 2026-05-09 12:16:52
+2026-05-09 12:16:52  INFO      ============================================================
+2026-05-09 12:16:52  INFO      Descargando precios de mercado...
+2026-05-09 12:16:53  INFO      Precios descargados: 30 semanas, 16 activos
