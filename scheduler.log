@@ -85,3 +85,16 @@
 2026-05-09 12:16:52  INFO      ============================================================
 2026-05-09 12:16:52  INFO      Descargando precios de mercado...
 2026-05-09 12:16:53  INFO      Precios descargados: 30 semanas, 16 activos
+2026-05-09 12:22:21  INFO      Scheduler iniciado.
+2026-05-09 12:22:22  INFO      Tablas verificadas/creadas en BD.
+2026-05-09 12:22:22  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-09 12:22:22  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-09 12:22:22  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-09 12:22:22  INFO      ============================================================
+2026-05-09 12:22:22  INFO      REBALANCEO SEMANAL — 2026-05-09 12:22:22
+2026-05-09 12:22:22  INFO      ============================================================
+2026-05-09 12:22:22  INFO      Descargando precios de mercado...
+2026-05-09 12:22:22  INFO      Precios descargados: 30 semanas, 16 activos
+2026-05-09 12:22:23  INFO      No hay usuarios con cuestionario completado.
+2026-05-09 12:22:23  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-09 12:25:36  INFO      Scheduler detenido manualmente.

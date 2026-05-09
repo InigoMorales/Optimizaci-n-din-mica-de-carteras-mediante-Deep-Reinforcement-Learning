@@ -426,13 +426,27 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
     }
 
 
-def guardar_historial_db(uid: str, valor: float, pesos: np.ndarray, ret: float) -> None:
+def guardar_historial_db(
+    uid: str, valor: float, pesos: np.ndarray, ret: float,
+    twr: float = 1.0, precios_ref: dict = None, es_rebalanceo: bool = False
+) -> None:
     with get_conn() as conn:
-        _exec(conn, 
-            "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana) "
-            "VALUES (?,?,?,?,?)",
-            (uid, datetime.now().isoformat(), float(valor), json.dumps(pesos.tolist()), float(ret)),
-        )
+        try:
+            _exec(conn,
+                "INSERT INTO historial_cartera "
+                "(usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,twr,precios_ref_json,es_rebalanceo) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (uid, datetime.now().isoformat(), float(valor),
+                 json.dumps(pesos.tolist()), float(ret), float(twr),
+                 json.dumps(precios_ref) if precios_ref else None,
+                 1 if es_rebalanceo else 0),
+            )
+        except Exception:
+            _exec(conn,
+                "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana) "
+                "VALUES (?,?,?,?,?)",
+                (uid, datetime.now().isoformat(), float(valor), json.dumps(pesos.tolist()), float(ret)),
+            )
 
 
 def cargar_historial_db(uid: str) -> list[dict]:
