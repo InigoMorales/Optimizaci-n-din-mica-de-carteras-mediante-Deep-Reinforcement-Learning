@@ -22,3 +22,39 @@
 2026-05-04 15:33:04  INFO      Proximo rebalanceo: viernes 08/05 a las 22:00
 2026-05-04 15:33:04  INFO      Scheduler en espera. Ctrl+C para detener.
 2026-05-04 15:34:18  INFO      Scheduler detenido manualmente.
+2026-05-09 11:53:50  INFO      Scheduler iniciado.
+2026-05-09 11:53:50  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-09 11:53:50  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-09 11:53:50  INFO      Rebalanceo pendiente detectado: ultimo=2026-05-07 18:10 | esperado=2026-05-08 22:00 | diferencia=1 dias
+2026-05-09 11:53:50  INFO      Rebalanceo pendiente detectado — ejecutando ahora...
+2026-05-09 11:53:50  INFO      ============================================================
+2026-05-09 11:53:50  INFO      REBALANCEO SEMANAL — 2026-05-09 11:53:50
+2026-05-09 11:53:50  INFO      ============================================================
+2026-05-09 11:53:50  INFO      Descargando precios de mercado...
+2026-05-09 11:53:51  INFO      Precios descargados: 30 semanas, 16 activos
+2026-05-09 11:53:51  INFO      Procesando 2 usuario(s)...
+2026-05-09 11:53:51  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-09 11:53:51  INFO      [Íñigo] arriesgado           | valor= 10,109.98 EUR | ret=+1.14% | cash=1.7%
+2026-05-09 11:53:51  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-09 11:53:51  INFO      [Juanjo] conservador          | valor= 10,008.44 EUR | ret=+0.08% | cash=94.6%
+2026-05-09 11:53:51  INFO      Rebalanceo completado: 2/2 usuarios procesados.
+2026-05-09 11:53:51  INFO      ============================================================
+2026-05-09 11:53:51  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-09 11:59:29  INFO      Scheduler detenido manualmente.
+2026-05-09 11:59:42  INFO      Scheduler iniciado.
+2026-05-09 11:59:42  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-09 11:59:42  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-09 11:59:42  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-09 11:59:42  INFO      ============================================================
+2026-05-09 11:59:42  INFO      REBALANCEO SEMANAL — 2026-05-09 11:59:42
+2026-05-09 11:59:42  INFO      ============================================================
+2026-05-09 11:59:42  INFO      Descargando precios de mercado...
+2026-05-09 11:59:43  INFO      Precios descargados: 30 semanas, 16 activos
+2026-05-09 11:59:43  INFO      Procesando 2 usuario(s)...
+2026-05-09 11:59:43  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-09 11:59:43  INFO      [Íñigo] arriesgado           | valor= 10,231.59 EUR | ret=+1.21% | cash=1.4%
+2026-05-09 11:59:43  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-09 11:59:43  INFO      [Juanjo] conservador          | valor= 10,016.90 EUR | ret=+0.08% | cash=94.6%
+2026-05-09 11:59:43  INFO      Rebalanceo completado: 2/2 usuarios procesados.
+2026-05-09 11:59:43  INFO      ============================================================
+2026-05-09 11:59:43  INFO      Scheduler en espera. Ctrl+C para detener.

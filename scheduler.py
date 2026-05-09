@@ -17,6 +17,25 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+
+# Cargar .env si existe
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# PostgreSQL o SQLite
+try:
+    import psycopg2
+    HAS_PG = True
+except ImportError:
+    HAS_PG = False
+
+
+def _get_db_url() -> str:
+    return os.environ.get("DATABASE_URL", "")
 import sqlite3
 import sys
 import time
@@ -84,23 +103,53 @@ _agentes_cache: dict[str, AgenteSAC] = {}
 
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    db_url = _get_db_url()
+    if db_url and HAS_PG:
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = False
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    else:
+        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+
+def _q(sql: str) -> str:
+    """Adapta ? a %s para PostgreSQL."""
+    db_url = _get_db_url()
+    if db_url and HAS_PG:
+        return sql.replace("?", "%s")
+    return sql
+
+
+def _exec(conn, sql: str, params=()):
+    db_url = _get_db_url()
+    if db_url and HAS_PG:
+        cur = conn.cursor()
+        cur.execute(_q(sql), params)
+        return cur
+    return _exec(conn, sql, params)
 
 
 def obtener_todos_usuarios() -> list[dict]:
     """Devuelve todos los usuarios con cuestionario completado y perfil asignado."""
     with get_conn() as conn:
-        rows = conn.execute(
+        rows = _exec(conn, 
             "SELECT id, nombre, email, perfil_asignado "
             "FROM usuarios WHERE cuestionario_completado = 1 AND perfil_asignado IS NOT NULL"
         ).fetchall()
@@ -110,7 +159,7 @@ def obtener_todos_usuarios() -> list[dict]:
 def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
     """Devuelve el último registro del historial de un usuario."""
     with get_conn() as conn:
-        row = conn.execute(
+        row = _exec(conn, 
             "SELECT fecha, valor_cartera, pesos_json "
             "FROM historial_cartera WHERE usuario_id = ? "
             "ORDER BY fecha DESC LIMIT 1",
@@ -138,7 +187,7 @@ def guardar_entrada_historial(
 ) -> None:
     with get_conn() as conn:
         try:
-            conn.execute(
+            _exec(conn, 
                 "INSERT INTO historial_cartera "
                 "(usuario_id, fecha, valor_cartera, pesos_json, retorno_semana, es_rebalanceo, precios_ref_json) "
                 "VALUES (?, ?, ?, ?, ?, 1, ?)",
@@ -148,7 +197,7 @@ def guardar_entrada_historial(
             )
         except Exception:
             # Fallback si columnas nuevas no existen aún
-            conn.execute(
+            _exec(conn, 
                 "INSERT INTO historial_cartera "
                 "(usuario_id, fecha, valor_cartera, pesos_json, retorno_semana) "
                 "VALUES (?, ?, ?, ?, ?)",
@@ -405,7 +454,7 @@ def rebalanceo_pendiente() -> bool:
     # Buscar la fecha del último rebalanceo en la BD (la entrada más reciente)
     try:
         with get_conn() as conn:
-            row = conn.execute(
+            row = _exec(conn, 
                 "SELECT MAX(fecha) FROM historial_cartera"
             ).fetchone()
         if not row or not row[0]:
