@@ -892,6 +892,12 @@ input,.stTextInput input,.stPasswordInput input {{
 # ══════════════════════════════════════════════════════════════════════════════
 
 def pantalla_login() -> None:
+    # DEBUG temporal - borrar después
+    db_url = _get_database_url()
+    if db_url:
+        st.success(f"BD conectada: {db_url[:40]}...")
+    else:
+        st.error("DATABASE_URL vacía - usando SQLite local")
     st.markdown("<br>", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 2, 1])
     with col:
