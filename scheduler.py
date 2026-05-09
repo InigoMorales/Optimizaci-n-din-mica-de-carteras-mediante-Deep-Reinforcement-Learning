@@ -134,15 +134,27 @@ def guardar_entrada_historial(
     valor: float,
     pesos: np.ndarray,
     retorno: float,
+    precios_ref: dict = None,
 ) -> None:
     with get_conn() as conn:
-        conn.execute(
-            "INSERT INTO historial_cartera "
-            "(usuario_id, fecha, valor_cartera, pesos_json, retorno_semana) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (usuario_id, datetime.now().isoformat(),
-             float(valor), json.dumps(pesos.tolist()), float(retorno)),
-        )
+        try:
+            conn.execute(
+                "INSERT INTO historial_cartera "
+                "(usuario_id, fecha, valor_cartera, pesos_json, retorno_semana, es_rebalanceo, precios_ref_json) "
+                "VALUES (?, ?, ?, ?, ?, 1, ?)",
+                (usuario_id, datetime.now().isoformat(),
+                 float(valor), json.dumps(pesos.tolist()), float(retorno),
+                 json.dumps(precios_ref) if precios_ref else None),
+            )
+        except Exception:
+            # Fallback si columnas nuevas no existen aún
+            conn.execute(
+                "INSERT INTO historial_cartera "
+                "(usuario_id, fecha, valor_cartera, pesos_json, retorno_semana) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (usuario_id, datetime.now().isoformat(),
+                 float(valor), json.dumps(pesos.tolist()), float(retorno)),
+            )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -355,7 +367,11 @@ def rebalancear_usuario(
     valor_nuevo -= valor_nuevo * coste_real
 
     # Guardar
-    guardar_entrada_historial(uid, valor_nuevo, pesos_nuevos, ret_semana)
+    # Guardar precios actuales como referencia para la app
+    px_ref_dict = {}
+    if len(precios) >= 1:
+        px_ref_dict = precios.iloc[-1].to_dict()
+    guardar_entrada_historial(uid, valor_nuevo, pesos_nuevos, ret_semana, px_ref_dict)
 
     p_cash = float(pesos_nuevos[-1]) if len(pesos_nuevos) > len(ACTIVOS_RIESGO) else 0.0
     log.info(

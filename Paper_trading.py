@@ -1303,10 +1303,17 @@ def pantalla_app() -> None:
 
     precios_hoy = descargar_precios_horarios()
 
-    # Precio de referencia: primer precio tras el último rebalanceo
+    # Precio de referencia: cargado desde la BD (guardado en el último rebalanceo)
+    # Esto garantiza que es el precio del viernes de rebalanceo, no el de la sesión actual
     ref_key = f"px_ref_{perfil}"
-    if ref_key not in st.session_state and not precios_hoy.empty:
-        st.session_state[ref_key] = precios_hoy.iloc[0].to_dict()
+    if ref_key not in st.session_state:
+        # Intentar cargar desde BD
+        px_ref_bd = ultima_entrada.get("precios_ref") if ultima_entrada else None
+        if px_ref_bd:
+            st.session_state[ref_key] = px_ref_bd
+        elif not precios_hoy.empty:
+            # Primera vez: usar el precio más antiguo disponible como referencia
+            st.session_state[ref_key] = precios_hoy.iloc[0].to_dict()
 
     px_ref    = st.session_state.get(ref_key, {})
     px_actual = precios_hoy.iloc[-1].to_dict() if not precios_hoy.empty else {}
@@ -1371,7 +1378,8 @@ def pantalla_app() -> None:
         hist_mem.append(entrada)
         st.session_state.historico = hist_mem
         # Guardar en BD para persistencia entre sesiones
-        guardar_historial_db(usr["id"], valor, pesos_vigentes, ret_desde_rebalanceo)
+        guardar_historial_db(usr["id"], valor, pesos_vigentes, ret_desde_rebalanceo,
+                             twr_actual, px_ref if px_ref else None)
 
     # Próximo rebalanceo
     from datetime import date
