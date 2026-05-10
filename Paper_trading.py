@@ -191,9 +191,26 @@ def _get_database_url() -> str:
     """Lee la DATABASE_URL de los secrets de Streamlit o variable de entorno."""
     import os
     try:
-        return st.secrets["DATABASE_URL"]
+        url = st.secrets["DATABASE_URL"]
     except Exception:
-        return os.environ.get("DATABASE_URL", "")
+        url = os.environ.get("DATABASE_URL", "")
+    if url and "pgbouncer" in url:
+        url = url.split("?")[0]
+    return url
+
+
+def _q(sql: str) -> str:
+    if _get_database_url() and USE_POSTGRES:
+        return sql.replace("?", "%s")
+    return sql
+
+
+def _exec(conn, sql: str, params=()):
+    if _get_database_url() and USE_POSTGRES:
+        cur = conn.cursor()
+        cur.execute(_q(sql), params)
+        return cur
+    return conn.execute(sql, params)
 
 
 @contextmanager
@@ -343,11 +360,10 @@ def registrar_usuario(email: str, nombre: str, pw: str) -> tuple[bool, str]:
                  hash_password(pw), datetime.now().isoformat()),
             )
         return True, uid
+    except sqlite3.IntegrityError:
+        return False, "Ya existe una cuenta con ese email."
     except Exception as e:
-        err = str(e)
-        if "unique" in err.lower() or "duplicate" in err.lower() or "UNIQUE" in err:
-            return False, "Ya existe una cuenta con ese email."
-        return False, f"Error: {err}"
+        return False, str(e)
 
 
 def login_usuario(email: str, pw: str) -> tuple[bool, str, Optional[dict]]:
