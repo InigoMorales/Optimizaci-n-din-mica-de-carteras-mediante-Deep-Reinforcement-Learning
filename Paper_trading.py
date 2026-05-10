@@ -191,9 +191,13 @@ def _get_database_url() -> str:
     """Lee la DATABASE_URL de los secrets de Streamlit o variable de entorno."""
     import os
     try:
-        return st.secrets["DATABASE_URL"]
+        url = st.secrets["DATABASE_URL"]
     except Exception:
-        return os.environ.get("DATABASE_URL", "")
+        url = os.environ.get("DATABASE_URL", "")
+    # psycopg2 no acepta ?pgbouncer=true — eliminarlo si existe
+    if url and "pgbouncer" in url:
+        url = url.split("?")[0]
+    return url
 
 
 @contextmanager
@@ -892,22 +896,6 @@ input,.stTextInput input,.stPasswordInput input {{
 # ══════════════════════════════════════════════════════════════════════════════
 
 def pantalla_login() -> None:
-    # ── DEBUG conexión BD ───────────────────────────────────────────────────
-    db_url = _get_database_url()
-    if db_url:
-        try:
-            import psycopg2
-            c = psycopg2.connect(db_url)
-            cur = c.cursor()
-            cur.execute("SELECT COUNT(*) FROM usuarios")
-            n = cur.fetchone()[0]
-            c.close()
-            st.success(f"PostgreSQL OK — {n} usuarios | URL: {db_url[:45]}...")
-        except Exception as e:
-            st.error(f"PostgreSQL FALLA: {e}")
-    else:
-        st.warning("DATABASE_URL vacía — usando SQLite local")
-    # ── FIN DEBUG ────────────────────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 2, 1])
     with col:
