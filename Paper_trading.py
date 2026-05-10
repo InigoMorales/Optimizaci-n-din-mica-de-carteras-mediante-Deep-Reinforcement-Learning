@@ -191,13 +191,9 @@ def _get_database_url() -> str:
     """Lee la DATABASE_URL de los secrets de Streamlit o variable de entorno."""
     import os
     try:
-        url = st.secrets["DATABASE_URL"]
+        return st.secrets["DATABASE_URL"]
     except Exception:
-        url = os.environ.get("DATABASE_URL", "")
-    # psycopg2 no acepta ?pgbouncer=true — eliminarlo si existe
-    if url and "pgbouncer" in url:
-        url = url.split("?")[0]
-    return url
+        return os.environ.get("DATABASE_URL", "")
 
 
 @contextmanager
@@ -232,64 +228,93 @@ def get_conn():
 
 
 def init_db() -> None:
+    db_url = _get_database_url()
+    is_pg = bool(db_url and USE_POSTGRES)
     with get_conn() as conn:
-        conn.executescript("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id                      TEXT PRIMARY KEY,
-            email                   TEXT UNIQUE NOT NULL,
-            nombre                  TEXT NOT NULL,
-            password_hash           TEXT NOT NULL,
-            fecha_registro          TEXT NOT NULL,
-            perfil_asignado         TEXT,
-            cuestionario_completado INTEGER DEFAULT 0,
-            tema                    TEXT DEFAULT 'dark',
-            saldo                   REAL DEFAULT 10000.0
-        );
-        CREATE TABLE IF NOT EXISTS movimientos (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id  TEXT NOT NULL REFERENCES usuarios(id),
-            tipo        TEXT NOT NULL,
-            importe     REAL NOT NULL,
-            fecha       TEXT NOT NULL,
-            nota        TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS respuestas_cuestionario (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id  TEXT NOT NULL REFERENCES usuarios(id),
-            pregunta_id TEXT NOT NULL,
-            puntuacion  INTEGER NOT NULL,
-            fecha       TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS historial_cartera (
-            id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id     TEXT NOT NULL REFERENCES usuarios(id),
-            fecha          TEXT NOT NULL,
-            valor_cartera  REAL NOT NULL,
-            pesos_json     TEXT NOT NULL,
-            retorno_semana REAL DEFAULT 0,
-            twr            REAL DEFAULT 1.0
-        );
-        """)
-
-
-def _q(sql: str) -> str:
-    """Adapta placeholders: ? para SQLite, %s para PostgreSQL."""
-    db_url = _get_database_url()
-    if db_url and USE_POSTGRES:
-        return sql.replace("?", "%s")
-    return sql
-
-
-def _exec(conn, sql: str, params=()):
-    """Ejecuta SQL compatible con SQLite y PostgreSQL."""
-    db_url = _get_database_url()
-    if db_url and USE_POSTGRES:
-        cur = conn.cursor()
-        cur.execute(_q(sql), params)
-        return cur
-    else:
-        return conn.execute(sql, params)
+        if is_pg:
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL,
+                    nombre TEXT NOT NULL, password_hash TEXT NOT NULL,
+                    fecha_registro TEXT NOT NULL, perfil_asignado TEXT,
+                    cuestionario_completado INTEGER DEFAULT 0,
+                    tema TEXT DEFAULT 'dark', saldo REAL DEFAULT 10000.0
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS respuestas_cuestionario (
+                    id SERIAL PRIMARY KEY,
+                    usuario_id TEXT NOT NULL REFERENCES usuarios(id),
+                    pregunta_id TEXT NOT NULL, puntuacion INTEGER NOT NULL,
+                    fecha TEXT NOT NULL
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS historial_cartera (
+                    id SERIAL PRIMARY KEY,
+                    usuario_id TEXT NOT NULL REFERENCES usuarios(id),
+                    fecha TEXT NOT NULL, valor_cartera REAL NOT NULL,
+                    pesos_json TEXT NOT NULL, retorno_semana REAL DEFAULT 0,
+                    twr REAL DEFAULT 1.0, precios_ref_json TEXT,
+                    es_rebalanceo INTEGER DEFAULT 0
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS movimientos (
+                    id SERIAL PRIMARY KEY,
+                    usuario_id TEXT NOT NULL REFERENCES usuarios(id),
+                    tipo TEXT NOT NULL, importe REAL NOT NULL,
+                    fecha TEXT NOT NULL, nota TEXT
+                )
+            """)
+            for alter in [
+                "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS saldo REAL DEFAULT 10000.0",
+                "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS twr REAL DEFAULT 1.0",
+                "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS precios_ref_json TEXT",
+                "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS es_rebalanceo INTEGER DEFAULT 0",
+            ]:
+                try:
+                    cur.execute(alter)
+                except Exception:
+                    pass
+        else:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL,
+                    nombre TEXT NOT NULL, password_hash TEXT NOT NULL,
+                    fecha_registro TEXT NOT NULL, perfil_asignado TEXT,
+                    cuestionario_completado INTEGER DEFAULT 0,
+                    tema TEXT DEFAULT 'dark', saldo REAL DEFAULT 10000.0
+                );
+                CREATE TABLE IF NOT EXISTS respuestas_cuestionario (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id TEXT NOT NULL, pregunta_id TEXT NOT NULL,
+                    puntuacion INTEGER NOT NULL, fecha TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS historial_cartera (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id TEXT NOT NULL, fecha TEXT NOT NULL,
+                    valor_cartera REAL NOT NULL, pesos_json TEXT NOT NULL,
+                    retorno_semana REAL DEFAULT 0, twr REAL DEFAULT 1.0,
+                    precios_ref_json TEXT, es_rebalanceo INTEGER DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS movimientos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id TEXT NOT NULL, tipo TEXT NOT NULL,
+                    importe REAL NOT NULL, fecha TEXT NOT NULL, nota TEXT
+                );
+            """)
+            for alter in [
+                "ALTER TABLE usuarios ADD COLUMN saldo REAL DEFAULT 10000.0",
+                "ALTER TABLE historial_cartera ADD COLUMN twr REAL DEFAULT 1.0",
+                "ALTER TABLE historial_cartera ADD COLUMN precios_ref_json TEXT",
+                "ALTER TABLE historial_cartera ADD COLUMN es_rebalanceo INTEGER DEFAULT 0",
+            ]:
+                try:
+                    conn.execute(alter)
+                except Exception:
+                    pass
 
 
 def hash_password(pw: str) -> str:
