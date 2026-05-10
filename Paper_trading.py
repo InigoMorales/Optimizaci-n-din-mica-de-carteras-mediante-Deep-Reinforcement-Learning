@@ -343,10 +343,11 @@ def registrar_usuario(email: str, nombre: str, pw: str) -> tuple[bool, str]:
                  hash_password(pw), datetime.now().isoformat()),
             )
         return True, uid
-    except sqlite3.IntegrityError:
-        return False, "Ya existe una cuenta con ese email."
     except Exception as e:
-        return False, str(e)
+        err = str(e)
+        if "unique" in err.lower() or "duplicate" in err.lower() or "UNIQUE" in err:
+            return False, "Ya existe una cuenta con ese email."
+        return False, f"Error: {err}"
 
 
 def login_usuario(email: str, pw: str) -> tuple[bool, str, Optional[dict]]:
