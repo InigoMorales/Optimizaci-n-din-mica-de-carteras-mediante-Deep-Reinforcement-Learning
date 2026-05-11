@@ -290,7 +290,6 @@ def init_db() -> None:
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS twr REAL DEFAULT 1.0",
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS precios_ref_json TEXT",
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS es_rebalanceo INTEGER DEFAULT 0",
-                "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS unidades_json TEXT",
             ]:
                 try:
                     cur.execute(alter)
@@ -475,20 +474,18 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
 
 def guardar_historial_db(
     uid: str, valor: float, pesos: np.ndarray, ret: float,
-    twr: float = 1.0, precios_ref: dict = None, es_rebalanceo: bool = False,
-    unidades: dict = None
+    twr: float = 1.0, precios_ref: dict = None, es_rebalanceo: bool = False
 ) -> None:
     with get_conn() as conn:
         try:
             _exec(conn,
                 "INSERT INTO historial_cartera "
-                "(usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,twr,precios_ref_json,es_rebalanceo,unidades_json) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
+                "(usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,twr,precios_ref_json,es_rebalanceo) "
+                "VALUES (?,?,?,?,?,?,?,?)",
                 (uid, datetime.now().isoformat(), float(valor),
                  json.dumps(pesos.tolist()), float(ret), float(twr),
                  json.dumps(precios_ref) if precios_ref else None,
-                 1 if es_rebalanceo else 0,
-                 None),  # unidades se actualiza por separado
+                 1 if es_rebalanceo else 0),
             )
         except Exception:
             _exec(conn,
@@ -574,7 +571,7 @@ def descargar_precios_horarios() -> pd.DataFrame:
     """Precios con intervalo 1h de los ultimos 7 dias para zoom intradiario."""
     from datetime import timedelta
     fecha_ini = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-    fecha_fin  = datetime.today().strftime("%Y-%m-%d")
+    fecha_fin  = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
     try:
         raw = yf.download(
             ACTIVOS_RIESGO,
@@ -600,7 +597,7 @@ def descargar_precios_diarios() -> pd.DataFrame:
     """
     from datetime import timedelta
     fecha_ini = (datetime.today() - timedelta(days=10)).strftime("%Y-%m-%d")
-    fecha_fin = datetime.today().strftime("%Y-%m-%d")
+    fecha_fin = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
     try:
         raw = yf.download(
             ACTIVOS_RIESGO,
@@ -1356,47 +1353,48 @@ def pantalla_app() -> None:
     pr     = pesos_vigentes[:len(ACTIVOS_RIESGO)]
     p_cash = float(pesos_vigentes[len(ACTIVOS_RIESGO)]) if len(pesos_vigentes) > len(ACTIVOS_RIESGO) else 0.0
 
-    # ── Calcular valor actual: unidades × precio actual ──────────────────
-    # Flujo correcto:
-    # 1. Al crear cuenta / rebalancear: pesos → unidades = peso*capital/precio_actual
-    # 2. Unidades se guardan en BD y no cambian hasta el próximo viernes
-    # 3. Valor = sum(unidades[i] * precio_actual[i]) + cash_units
+    # ── Calcular valor actual: unidades × precio actual ───────────────────
+    # Lógica simple y correcta:
+    # 1. En el momento del rebalanceo, guardamos el precio de cada activo
+    # 2. Calculamos cuántas unidades compramos: unidades[i] = peso[i]*capital / precio_ref[i]
+    # 3. Valor actual = sum(unidades[i] * precio_actual[i]) + cash
+    # El precio de referencia se guarda en session_state al primer refresco
+    # y solo cambia cuando el scheduler rebalancea (viernes).
 
     precios_hoy = descargar_precios_horarios()
+
+    # Precio de referencia: cargado desde la BD (guardado en el último rebalanceo)
+    # Esto garantiza que es el precio del viernes de rebalanceo, no el de la sesión actual
+    ref_key = f"px_ref_{perfil}"
+    if ref_key not in st.session_state:
+        # Intentar cargar desde BD
+        px_ref_bd = ultima_entrada.get("precios_ref") if ultima_entrada else None
+        if px_ref_bd:
+            st.session_state[ref_key] = px_ref_bd
+        elif not precios_hoy.empty:
+            # Primera vez: usar el precio más antiguo disponible como referencia
+            st.session_state[ref_key] = precios_hoy.iloc[0].to_dict()
+
+    px_ref    = st.session_state.get(ref_key, {})
     px_actual = precios_hoy.iloc[-1].to_dict() if not precios_hoy.empty else {}
     fecha_px  = str(precios_hoy.index[-1]) if not precios_hoy.empty else "N/A"
 
+    # Guardar precios actuales para mostrar en detalle
     st.session_state["px_actual_detalle"] = px_actual
     st.session_state["fecha_px_detalle"]  = fecha_px
 
-    # Cargar unidades desde session_state o calcularlas si no existen
-    unidades_key = f"unidades_{usr['id']}_{perfil}"
-    unidades = st.session_state.get(unidades_key)
-
-    if not unidades and px_actual:
-        # Calcular unidades con el precio actual (primera vez o cambio de perfil)
-        unidades = {}
+    if px_ref and px_actual:
+        valor = 0.0
         for i, activo in enumerate(ACTIVOS_RIESGO):
             peso_i = float(pr[i]) if i < len(pr) else 0.0
+            px_r   = float(px_ref.get(activo, 0.0))
             px_a   = float(px_actual.get(activo, 0.0))
-            if px_a > 1e-8:
-                unidades[activo] = peso_i * valor_base / px_a
+            if px_r > 1e-8 and px_a > 1e-8:
+                valor += peso_i * valor_base * (px_a / px_r)
             else:
-                unidades[activo] = 0.0
-        unidades["CASH"] = p_cash * valor_base  # cash en euros directamente
-        st.session_state[unidades_key] = unidades
-
-    # Calcular valor actual con precios de hoy
-    px_ref = {}  # mantener para compatibilidad con código existente
-    if unidades and px_actual:
-        valor = 0.0
-        for activo in ACTIVOS_RIESGO:
-            n_units = float(unidades.get(activo, 0.0))
-            px_a    = float(px_actual.get(activo, 0.0))
-            if px_a > 1e-8:
-                valor += n_units * px_a
-        valor += float(unidades.get("CASH", 0.0))
-        valor = max(valor, 0.01)
+                valor += peso_i * valor_base
+        valor += p_cash * valor_base
+        valor  = max(valor, 0.01)
     else:
         valor = valor_base
 
