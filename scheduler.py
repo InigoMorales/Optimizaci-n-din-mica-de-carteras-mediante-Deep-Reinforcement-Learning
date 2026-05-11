@@ -474,6 +474,17 @@ def rebalancear_usuario(
         px_ref_dict = precios.iloc[-1].to_dict()
     guardar_entrada_historial(uid, valor_nuevo, pesos_nuevos, ret_semana, px_ref_dict)
 
+    # Borrar unidades guardadas para que la app las recalcule con nuevos pesos
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2",
+                (f"{uid}__{perfil}",)
+            )
+        log.info(f"[{nombre}] Unidades reseteadas para recalculo con nuevos pesos")
+    except Exception as e:
+        log.warning(f"[{nombre}] No se pudieron borrar unidades: {e}")
+
     p_cash = float(pesos_nuevos[-1]) if len(pesos_nuevos) > len(ACTIVOS_RIESGO) else 0.0
     log.info(
         f"[{nombre}] {perfil:20s} | "
