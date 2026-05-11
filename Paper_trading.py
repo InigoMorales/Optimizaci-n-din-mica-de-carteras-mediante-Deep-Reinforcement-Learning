@@ -593,11 +593,12 @@ def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
     return pd.DataFrame(data).set_index("fecha") if data else pd.DataFrame()
 
 
+@st.cache_data(ttl=300)
 def descargar_precios_horarios() -> pd.DataFrame:
     """Precios con intervalo 1h de los ultimos 7 dias para zoom intradiario."""
     from datetime import timedelta
     fecha_ini = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-    fecha_fin  = datetime.today().strftime("%Y-%m-%d")
+    fecha_fin  = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
     try:
         raw = yf.download(
             ACTIVOS_RIESGO,
@@ -609,6 +610,11 @@ def descargar_precios_horarios() -> pd.DataFrame:
         col = "Close" if "Close" in raw.columns.get_level_values(0) else raw.columns.get_level_values(0)[0]
         px  = raw[col].copy()
         px.index = pd.to_datetime(px.index)
+        # Convertir a hora española para mostrar correctamente
+        if px.index.tz is not None:
+            px.index = px.index.tz_convert("Europe/Madrid")
+        else:
+            px.index = px.index.tz_localize("UTC").tz_convert("Europe/Madrid")
         return px.sort_index().ffill().dropna(how="all")
     except Exception:
         return pd.DataFrame()
@@ -1799,16 +1805,16 @@ def pantalla_app() -> None:
         _unids = st.session_state.get(f"unidades_{usr['id']}_{perfil}", {})
         filas = []
         for i, activo in enumerate(ACTIVOS_RIESGO):
-            peso_i   = float(pr[i]) if i < len(pr) else 0.0
-            px_a     = float(px_det.get(activo, 0.0))
-            n_units  = float(_unids.get(activo, 0.0))
+            peso_i  = float(pr[i]) if i < len(pr) else 0.0
+            px_a    = float(px_det.get(activo, 0.0))
+            n_units = float(_unids.get(activo, 0.0))
             if peso_i > 0.001:
                 filas.append({
-                    "Ticker":    activo,
-                    "Nombre":    NOMBRES_ACTIVOS.get(activo, activo),
-                    "Precio":    f"${px_a:,.2f}" if px_a > 0 else "N/D",
-                    "Acciones":  f"{n_units:.4f}",
-                    "Peso":      f"{peso_i*100:.1f}%",
+                    "Ticker":   activo,
+                    "Nombre":   NOMBRES_ACTIVOS.get(activo, activo),
+                    "Precio":   f"${px_a:,.2f}" if px_a > 0 else "N/D",
+                    "Acciones": f"{n_units:.4f}",
+                    "Peso":     f"{peso_i*100:.1f}%",
                 })
         df_px = pd.DataFrame(filas)
         st.dataframe(df_px, hide_index=True, use_container_width=True,
