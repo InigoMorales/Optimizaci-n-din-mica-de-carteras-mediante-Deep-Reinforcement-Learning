@@ -472,6 +472,32 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
     }
 
 
+def guardar_unidades_db(uid: str, perfil: str, unidades: dict) -> None:
+    try:
+        with get_conn() as conn:
+            _exec(conn, "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2", (f"{uid}__{perfil}",))
+            _exec(conn,
+                "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,es_rebalanceo,unidades_json) VALUES (?,?,0,'{}',0,2,?)",
+                (f"{uid}__{perfil}", datetime.now().isoformat(), json.dumps(unidades)),
+            )
+    except Exception:
+        pass
+
+
+def cargar_unidades_db(uid: str, perfil: str) -> dict:
+    try:
+        with get_conn() as conn:
+            row = _exec(conn,
+                "SELECT unidades_json FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2 ORDER BY fecha DESC LIMIT 1",
+                (f"{uid}__{perfil}",),
+            ).fetchone()
+            if row and row[0]:
+                return json.loads(row[0])
+    except Exception:
+        pass
+    return {}
+
+
 def guardar_historial_db(
     uid: str, valor: float, pesos: np.ndarray, ret: float,
     twr: float = 1.0, precios_ref: dict = None, es_rebalanceo: bool = False
@@ -1383,18 +1409,27 @@ def pantalla_app() -> None:
     st.session_state["px_actual_detalle"] = px_actual
     st.session_state["fecha_px_detalle"]  = fecha_px
 
-    if px_ref and px_actual:
-        valor = 0.0
+    # Cargar unidades: session_state → BD → calcular por primera vez
+    uk = f"unidades_{usr['id']}_{perfil}"
+    unidades = st.session_state.get(uk)
+    if not unidades:
+        unidades = cargar_unidades_db(usr["id"], perfil)
+        if unidades:
+            st.session_state[uk] = unidades
+    if not unidades and px_actual:
+        unidades = {}
         for i, activo in enumerate(ACTIVOS_RIESGO):
             peso_i = float(pr[i]) if i < len(pr) else 0.0
-            px_r   = float(px_ref.get(activo, 0.0))
             px_a   = float(px_actual.get(activo, 0.0))
-            if px_r > 1e-8 and px_a > 1e-8:
-                valor += peso_i * valor_base * (px_a / px_r)
-            else:
-                valor += peso_i * valor_base
-        valor += p_cash * valor_base
-        valor  = max(valor, 0.01)
+            unidades[activo] = (peso_i * valor_base / px_a) if px_a > 1e-8 else 0.0
+        unidades["CASH"] = p_cash * valor_base
+        st.session_state[uk] = unidades
+        guardar_unidades_db(usr["id"], perfil, unidades)
+
+    if unidades and px_actual:
+        valor = sum(float(unidades.get(a, 0.0)) * float(px_actual.get(a, 0.0)) for a in ACTIVOS_RIESGO)
+        valor += float(unidades.get("CASH", 0.0))
+        valor = max(valor, 0.01)
     else:
         valor = valor_base
 
@@ -1694,11 +1729,15 @@ def pantalla_app() -> None:
         })
         df_p = df_p[df_p["Peso"] > 0.001].sort_values("Peso", ascending=False)
         df_p["Peso %"] = (df_p["Peso"] * 100).round(2).astype(str) + " %"
+        _unids = st.session_state.get(f"unidades_{usr['id']}_{perfil}", {})
+        df_p["Unidades"] = df_p["Ticker"].apply(
+            lambda t: f"{float(_unids.get(t, 0.0)):.4f}" if t != "CASH" else f"€{float(_unids.get('CASH', 0.0)):.2f}"
+        )
         df_p["Barra"]  = df_p["Peso"].apply(lambda w: "█"*int(w*28) + "░"*(28-int(w*28)))
 
         ct, ci = st.columns([2, 1])
         with ct:
-            st.dataframe(df_p[["Ticker","Activo","Peso %","Barra"]],
+            st.dataframe(df_p[["Ticker","Activo","Peso %","Unidades","Barra"]],
                          hide_index=True, use_container_width=True,
                          height=min(50+len(df_p)*36, 400))
         with ci:
