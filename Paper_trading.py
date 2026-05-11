@@ -529,7 +529,7 @@ def cargar_historial_db(uid: str) -> list[dict]:
 # Mercado y agente
 # ══════════════════════════════════════════════════════════════════════════════
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=60)
 def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
     """
     Carga los snapshots guardados en la BD para el usuario
@@ -571,7 +571,7 @@ def descargar_precios_horarios() -> pd.DataFrame:
     """Precios con intervalo 1h de los ultimos 7 dias para zoom intradiario."""
     from datetime import timedelta
     fecha_ini = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-    fecha_fin  = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+    fecha_fin  = datetime.today().strftime("%Y-%m-%d")
     try:
         raw = yf.download(
             ACTIVOS_RIESGO,
@@ -588,7 +588,7 @@ def descargar_precios_horarios() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=900)   # refresca cada 15 min
+@st.cache_data(ttl=60)   # refresca cada minuto
 def descargar_precios_diarios() -> pd.DataFrame:
     """
     Descarga precios diarios de los últimos 5 días para calcular
@@ -597,7 +597,7 @@ def descargar_precios_diarios() -> pd.DataFrame:
     """
     from datetime import timedelta
     fecha_ini = (datetime.today() - timedelta(days=10)).strftime("%Y-%m-%d")
-    fecha_fin = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+    fecha_fin = datetime.today().strftime("%Y-%m-%d")
     try:
         raw = yf.download(
             ACTIVOS_RIESGO,
