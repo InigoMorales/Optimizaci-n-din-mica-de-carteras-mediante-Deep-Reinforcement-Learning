@@ -1231,11 +1231,17 @@ def pantalla_app() -> None:
             st.cache_data.clear()
             st.session_state["forzar_snapshot"] = True
             st.rerun()
-        # Mostrar precio de referencia: si hay datos diarios, cuándo es
+        # Mostrar precio de referencia usando precios horarios (más actuales)
         try:
-            px_d = descargar_precios_diarios()
-            if not px_d.empty:
-                ultima_hora = pd.to_datetime(px_d.index[-1]).strftime("%d/%m %H:%M")
+            px_h = descargar_precios_horarios()
+            if not px_h.empty:
+                ts = pd.to_datetime(px_h.index[-1])
+                # Convertir UTC a hora española
+                try:
+                    ts_local = ts.tz_convert("Europe/Madrid") if ts.tzinfo else ts
+                except Exception:
+                    ts_local = ts
+                ultima_hora = ts_local.strftime("%d/%m %H:%M")
                 st.caption(f"Precio al: {ultima_hora} | Refresca en 15 min")
             else:
                 st.caption(f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
