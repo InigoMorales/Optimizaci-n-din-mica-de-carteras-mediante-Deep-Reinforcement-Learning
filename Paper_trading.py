@@ -1525,11 +1525,18 @@ def pantalla_app() -> None:
         ret_twr = (twr_actual_hero - 1.0) * 100.0
         cl_hero = "pos" if ret_twr >= 0 else "neg"
         signo   = "+" if ret_twr >= 0 else ""
+        # Mostrar suficientes decimales para valores pequeños
+        if abs(ret_twr) < 0.1:
+            ret_str = f"{signo}{ret_twr:.3f}%"
+        elif abs(ret_twr) < 1.0:
+            ret_str = f"{signo}{ret_twr:.2f}%"
+        else:
+            ret_str = f"{signo}{ret_twr:.2f}%"
         st.markdown(f"""
 <div style='padding:32px 0 8px 0;'>
     <div class='hero-label'>Valor de tu cartera</div>
     <div class='hero-value'>€{valor:,.2f}</div>
-    <div class='hero-change {cl_hero}'>{signo}{ret_twr:.2f}% rentabilidad</div>
+    <div class='hero-change {cl_hero}'>{ret_str} rentabilidad</div>
 </div>""", unsafe_allow_html=True)
 
         # Gráfica principal — línea fina, sin relleno agresivo, Trade Republic style
@@ -1801,16 +1808,20 @@ def pantalla_app() -> None:
 
     if px_det:
         st.caption(f"Último precio descargado: {fecha_det}")
+        _unids = st.session_state.get(f"unidades_{usr['id']}_{perfil}", {})
         filas = []
         for i, activo in enumerate(ACTIVOS_RIESGO):
-            peso_i = float(pr[i]) if i < len(pr) else 0.0
-            px_a   = float(px_det.get(activo, 0.0))
-            filas.append({
-                "Ticker":  activo,
-                "Nombre":  NOMBRES_ACTIVOS.get(activo, activo),
-                "Precio":  f"${px_a:,.2f}" if px_a > 0 else "N/D",
-                "Peso":    f"{peso_i*100:.1f}%",
-            })
+            peso_i  = float(pr[i]) if i < len(pr) else 0.0
+            px_a    = float(px_det.get(activo, 0.0))
+            n_units = float(_unids.get(activo, 0.0))
+            if peso_i > 0.001:
+                filas.append({
+                    "Ticker":   activo,
+                    "Nombre":   NOMBRES_ACTIVOS.get(activo, activo),
+                    "Precio":   f"${px_a:,.2f}" if px_a > 0 else "N/D",
+                    "Acciones": f"{n_units:.4f}",
+                    "Peso":     f"{peso_i*100:.1f}%",
+                })
         df_px = pd.DataFrame(filas)
         st.dataframe(df_px, hide_index=True, use_container_width=True,
                      height=min(50 + len(df_px) * 36, 380))
