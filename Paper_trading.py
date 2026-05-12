@@ -1519,10 +1519,11 @@ def pantalla_app() -> None:
             st.markdown("<div class='live-dot'><div class='dot'></div>EN VIVO</div>",
                         unsafe_allow_html=True)
 
-        # Valor hero
-        # TWR: retorno porcentual real independiente de ingresos/retiradas
-        twr_actual_hero = hist_mem[-1].get("twr", 1.0) if hist_mem else 1.0
-        ret_twr = (twr_actual_hero - 1.0) * 100.0
+        # Valor hero — rentabilidad vs primer valor guardado en BD
+        primer_valor = float(hist_mem[0].get("valor", valor_base)) if hist_mem else valor_base
+        if primer_valor <= 0:
+            primer_valor = valor_base
+        ret_twr = (valor / primer_valor - 1.0) * 100.0
         cl_hero = "pos" if ret_twr >= 0 else "neg"
         signo   = "+" if ret_twr >= 0 else ""
         # Mostrar suficientes decimales para valores pequeños
