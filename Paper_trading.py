@@ -594,21 +594,26 @@ def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
 
 
 def descargar_precios_horarios() -> pd.DataFrame:
-    """Precios con intervalo 1h de los ultimos 7 dias para zoom intradiario."""
-    from datetime import timedelta
-    fecha_ini = (datetime.today() - timedelta(days=7)).strftime("%Y-%m-%d")
-    fecha_fin  = datetime.today().strftime("%Y-%m-%d")
+    """Precio actual de cada activo con resolución 5m.
+    Solo necesitamos el precio más reciente para calcular el valor de la cartera.
+    """
     try:
         raw = yf.download(
             ACTIVOS_RIESGO,
-            start=fecha_ini, end=fecha_fin,
-            interval="1h", auto_adjust=True, progress=False,
+            period="1d",
+            interval="5m",
+            auto_adjust=True,
+            progress=False,
         )
         if raw.empty:
             return pd.DataFrame()
         col = "Close" if "Close" in raw.columns.get_level_values(0) else raw.columns.get_level_values(0)[0]
         px  = raw[col].copy()
         px.index = pd.to_datetime(px.index)
+        if px.index.tz is not None:
+            px.index = px.index.tz_convert("Europe/Madrid")
+        else:
+            px.index = px.index.tz_localize("UTC").tz_convert("Europe/Madrid")
         return px.sort_index().ffill().dropna(how="all")
     except Exception:
         return pd.DataFrame()
@@ -1514,9 +1519,10 @@ def pantalla_app() -> None:
             st.markdown("<div class='live-dot'><div class='dot'></div>EN VIVO</div>",
                         unsafe_allow_html=True)
 
-        # Rentabilidad: valor actual vs capital inicial (simple y directo)
-        cap_inicial = usr.get("saldo", 10_000.0)
-        ret_twr = (valor / cap_inicial - 1.0) * 100.0 if cap_inicial > 0 else 0.0
+        # Valor hero
+        # TWR: retorno porcentual real independiente de ingresos/retiradas
+        twr_actual_hero = hist_mem[-1].get("twr", 1.0) if hist_mem else 1.0
+        ret_twr = (twr_actual_hero - 1.0) * 100.0
         cl_hero = "pos" if ret_twr >= 0 else "neg"
         signo   = "+" if ret_twr >= 0 else ""
         st.markdown(f"""
