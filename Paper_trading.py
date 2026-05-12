@@ -1398,27 +1398,21 @@ def pantalla_app() -> None:
     # El precio de referencia se guarda en session_state al primer refresco
     # y solo cambia cuando el scheduler rebalancea (viernes).
 
-    precios_hoy = descargar_precios_horarios()
+    # ── Descarga de precios: una sola vez cada 5 minutos ────────────────
+    # El valor SOLO cambia cuando se actualizan los precios.
+    ahora_ts  = datetime.now()
+    ultimo_ts = st.session_state.get("px_ts")
+    forzar_px = st.session_state.pop("forzar_snapshot", False)
 
-    # Precio de referencia: cargado desde la BD (guardado en el último rebalanceo)
-    # Esto garantiza que es el precio del viernes de rebalanceo, no el de la sesión actual
-    ref_key = f"px_ref_{perfil}"
-    if ref_key not in st.session_state:
-        # Intentar cargar desde BD
-        px_ref_bd = ultima_entrada.get("precios_ref") if ultima_entrada else None
-        if px_ref_bd:
-            st.session_state[ref_key] = px_ref_bd
-        elif not precios_hoy.empty:
-            # Primera vez: usar el precio más antiguo disponible como referencia
-            st.session_state[ref_key] = precios_hoy.iloc[0].to_dict()
+    if forzar_px or not ultimo_ts or (ahora_ts - ultimo_ts).total_seconds() > 300:
+        precios_hoy = descargar_precios_horarios()
+        if not precios_hoy.empty:
+            st.session_state["px_actual"]        = precios_hoy.iloc[-1].to_dict()
+            st.session_state["fecha_px_detalle"] = str(precios_hoy.index[-1])
+            st.session_state["px_ts"]            = ahora_ts
 
-    px_ref    = st.session_state.get(ref_key, {})
-    px_actual = precios_hoy.iloc[-1].to_dict() if not precios_hoy.empty else {}
-    fecha_px  = str(precios_hoy.index[-1]) if not precios_hoy.empty else "N/A"
-
-    # Guardar precios actuales para mostrar en detalle
+    px_actual = st.session_state.get("px_actual", {})
     st.session_state["px_actual_detalle"] = px_actual
-    st.session_state["fecha_px_detalle"]  = fecha_px
 
     # Cargar unidades: session_state → BD → calcular por primera vez
     uk = f"unidades_{usr['id']}_{perfil}"
