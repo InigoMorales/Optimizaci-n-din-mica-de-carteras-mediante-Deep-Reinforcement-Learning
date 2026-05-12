@@ -1479,7 +1479,7 @@ def pantalla_app() -> None:
         st.session_state.historico = hist_mem
         # Guardar en BD para persistencia entre sesiones
         guardar_historial_db(usr["id"], valor, pesos_vigentes, ret_desde_rebalanceo,
-                             twr_actual, px_ref if px_ref else None)
+                             twr_actual)
 
     # Próximo rebalanceo
     from datetime import date
