@@ -198,6 +198,81 @@ def init_db() -> None:
         log.info("Tablas verificadas/creadas en BD.")
 
 
+def guardar_pesos_perfil(perfil: str, pesos: list, precios_ref: dict) -> None:
+    """Guarda los pesos calculados para un perfil de riesgo."""
+    with get_conn() as conn:
+        _exec(conn,
+            "INSERT INTO pesos_perfil (perfil,fecha,pesos_json,precios_ref_json) VALUES (?,?,?,?)",
+            (perfil, datetime.now().isoformat(),
+             json.dumps(pesos), json.dumps(precios_ref)),
+        )
+
+
+def rebalancear_perfil(perfil: str, precios: pd.DataFrame) -> bool:
+    """
+    Calcula los nuevos pesos para un perfil de riesgo y los guarda.
+    Luego borra las unidades de todos los usuarios con ese perfil
+    para que la app las recalcule con los nuevos pesos.
+    """
+    agente = cargar_agente(perfil)
+    if agente is None:
+        log.warning(f"Sin agente para '{perfil}', se omite.")
+        return False
+
+    riesgo = RIESGO_POR_PERFIL.get(perfil, 0.50)
+
+    # Construir estado genérico (sin historial de usuario específico)
+    pesos_prev = np.zeros(len(ACTIVOS_RIESGO) + 1, dtype=np.float32)
+    pesos_prev[-1] = 1.0  # todo en cash como base
+
+    # Recuperar pesos previos del perfil si existen
+    try:
+        with get_conn() as conn:
+            row = _exec(conn,
+                "SELECT pesos_json FROM pesos_perfil WHERE perfil=? ORDER BY fecha DESC LIMIT 1",
+                (perfil,),
+            ).fetchone()
+            if row and row[0]:
+                pesos_prev = np.array(json.loads(row[0]), dtype=np.float32)
+    except Exception:
+        pass
+
+    estado = construir_estado(precios, pesos_prev, riesgo, 0.0, 0.0)
+    if estado is None:
+        log.warning(f"No se pudo construir estado para '{perfil}'.")
+        return False
+
+    if len(estado) != agente.actor.obs_dim:
+        log.error(f"Dimensión incompatible perfil '{perfil}': agente={agente.actor.obs_dim}, estado={len(estado)}")
+        return False
+
+    pesos_nuevos = decidir_pesos(agente, estado)
+    px_ref = precios.iloc[-1].to_dict() if len(precios) >= 1 else {}
+
+    # Guardar pesos del perfil
+    guardar_pesos_perfil(perfil, pesos_nuevos.tolist(), px_ref)
+    log.info(f"Perfil '{perfil}': pesos guardados, cash={float(pesos_nuevos[-1])*100:.1f}%")
+
+    # Borrar unidades de todos los usuarios con este perfil para recalculo
+    try:
+        with get_conn() as conn:
+            rows = _exec(conn,
+                "SELECT id FROM usuarios WHERE perfil_asignado=? AND cuestionario_completado=1",
+                (perfil,),
+            ).fetchall()
+            for row in rows:
+                uid = row[0]
+                _exec(conn,
+                    "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2",
+                    (f"{uid}__{perfil}",),
+                )
+        log.info(f"Perfil '{perfil}': unidades reseteadas para {len(rows)} usuarios")
+    except Exception as e:
+        log.warning(f"No se pudieron borrar unidades del perfil '{perfil}': {e}")
+
+    return True
+
+
 def obtener_todos_usuarios() -> list[dict]:
     """Devuelve todos los usuarios con cuestionario completado y perfil asignado."""
     with get_conn() as conn:
