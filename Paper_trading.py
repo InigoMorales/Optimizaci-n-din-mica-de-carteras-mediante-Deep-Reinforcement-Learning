@@ -589,16 +589,16 @@ def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
     desde = (datetime.now() - timedelta(hours=ventana_horas)).isoformat()
     with get_conn() as conn:
         try:
-            rows = _exec(conn, 
+            rows = _exec(conn,
                 "SELECT fecha, valor_cartera, twr FROM historial_cartera "
-                "WHERE usuario_id=? AND fecha>=? ORDER BY fecha ASC",
+                "WHERE usuario_id=? AND fecha>=? AND es_rebalanceo=0 ORDER BY fecha ASC",
                 (usuario_id, desde),
             ).fetchall()
         except Exception:
             # Fallback si la columna twr no existe aún
-            rows = _exec(conn, 
+            rows = _exec(conn,
                 "SELECT fecha, valor_cartera, 1.0 FROM historial_cartera "
-                "WHERE usuario_id=? AND fecha>=? ORDER BY fecha ASC",
+                "WHERE usuario_id=? AND fecha>=? AND es_rebalanceo=0 ORDER BY fecha ASC",
                 (usuario_id, desde),
             ).fetchall()
     if not rows:
