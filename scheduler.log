@@ -111,3 +111,168 @@
 2026-05-09 12:25:53  INFO      No hay usuarios con cuestionario completado.
 2026-05-09 12:25:53  INFO      Scheduler en espera. Ctrl+C para detener.
 2026-05-09 12:33:06  INFO      Scheduler detenido manualmente.
+2026-05-15 23:08:23  INFO      Scheduler iniciado.
+2026-05-15 23:08:24  INFO      Tablas verificadas/creadas en BD.
+2026-05-15 23:08:24  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-15 23:08:24  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-15 23:08:24  INFO      Rebalanceo pendiente detectado: ultimo=2026-05-15 21:06 | esperado=2026-05-15 22:00 | diferencia=0 dias
+2026-05-15 23:08:24  INFO      Rebalanceo pendiente detectado — ejecutando ahora...
+2026-05-15 23:08:24  INFO      ============================================================
+2026-05-15 23:08:24  INFO      REBALANCEO SEMANAL — 2026-05-15 23:08:24
+2026-05-15 23:08:24  INFO      ============================================================
+2026-05-15 23:08:24  INFO      Descargando precios de mercado...
+2026-05-15 23:08:25  INFO      Precios descargados: 31 semanas, 16 activos
+2026-05-15 23:08:25  INFO      Procesando 8 usuario(s)...
+2026-05-15 23:08:26  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:08:27  WARNING   [Íñigo] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:27  INFO      [Íñigo] arriesgado           | valor= 10,072.69 EUR | ret=-0.48% | cash=1.0%
+2026-05-15 23:08:27  INFO      Agente 'normal' cargado desde agente_final_normal.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:08:28  WARNING   [Íñigo] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:28  INFO      [Íñigo] normal               | valor= 10,006.07 EUR | ret=+0.01% | cash=10.5%
+2026-05-15 23:08:29  WARNING   [Alberto] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:29  INFO      [Alberto] normal               | valor=  9,989.01 EUR | ret=-0.08% | cash=12.3%
+2026-05-15 23:08:29  INFO      Agente 'muy_conservador' cargado desde agente_final_muy_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:08:30  WARNING   [Muy Conservador] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:30  INFO      [Muy Conservador] muy_conservador      | valor= 10,002.30 EUR | ret=+0.02% | cash=95.3%
+2026-05-15 23:08:30  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:08:31  WARNING   [Conservador] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:31  INFO      [Conservador] conservador          | valor= 10,001.46 EUR | ret=+0.01% | cash=95.4%
+2026-05-15 23:08:32  WARNING   [Arriesgado] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:32  INFO      [Arriesgado] arriesgado           | valor=  9,975.96 EUR | ret=-0.22% | cash=0.6%
+2026-05-15 23:08:32  INFO      Agente 'muy_arriesgado' cargado desde agente_final_muy_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:08:34  WARNING   [Iñigo] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:34  INFO      [Iñigo] muy_arriesgado       | valor= 10,309.28 EUR | ret=+4.03% | cash=0.2%
+2026-05-15 23:08:35  WARNING   [Muy Arriesgado] No se pudieron borrar unidades: 'psycopg2.extensions.connection' object has no attribute 'execute'
+2026-05-15 23:08:35  INFO      [Muy Arriesgado] muy_arriesgado       | valor= 10,345.97 EUR | ret=+4.03% | cash=0.2%
+2026-05-15 23:08:35  INFO      Rebalanceo completado: 8/8 usuarios procesados.
+2026-05-15 23:08:35  INFO      ============================================================
+2026-05-15 23:08:35  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-15 23:13:30  INFO      Scheduler detenido manualmente.
+2026-05-15 23:13:43  INFO      Scheduler iniciado.
+2026-05-15 23:13:44  INFO      Tablas verificadas/creadas en BD.
+2026-05-15 23:13:44  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-15 23:13:44  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-15 23:13:44  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-15 23:13:44  INFO      ============================================================
+2026-05-15 23:13:44  INFO      REBALANCEO SEMANAL — 2026-05-15 23:13:44
+2026-05-15 23:13:44  INFO      ============================================================
+2026-05-15 23:13:44  INFO      Descargando precios de mercado...
+2026-05-15 23:13:44  INFO      Precios descargados: 31 semanas, 16 activos
+2026-05-15 23:13:45  INFO      Procesando 8 usuario(s)...
+2026-05-15 23:13:45  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:13:46  WARNING   [Íñigo] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:46  INFO      [Íñigo] arriesgado           | valor= 10,050.50 EUR | ret=-0.20% | cash=0.6%
+2026-05-15 23:13:46  INFO      Agente 'normal' cargado desde agente_final_normal.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:13:48  WARNING   [Íñigo] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:48  INFO      [Íñigo] normal               | valor=  9,997.58 EUR | ret=-0.08% | cash=12.2%
+2026-05-15 23:13:49  WARNING   [Alberto] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:49  INFO      [Alberto] normal               | valor=  9,981.38 EUR | ret=-0.08% | cash=12.0%
+2026-05-15 23:13:49  INFO      Agente 'muy_conservador' cargado desde agente_final_muy_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:13:50  WARNING   [Muy Conservador] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:50  INFO      [Muy Conservador] muy_conservador      | valor= 10,004.58 EUR | ret=+0.02% | cash=95.3%
+2026-05-15 23:13:50  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:13:51  WARNING   [Conservador] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:51  INFO      [Conservador] conservador          | valor= 10,002.96 EUR | ret=+0.01% | cash=95.4%
+2026-05-15 23:13:53  WARNING   [Arriesgado] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:53  INFO      [Arriesgado] arriesgado           | valor=  9,953.52 EUR | ret=-0.22% | cash=0.6%
+2026-05-15 23:13:53  INFO      Agente 'muy_arriesgado' cargado desde agente_final_muy_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:13:54  WARNING   [Iñigo] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:54  INFO      [Iñigo] muy_arriesgado       | valor= 10,740.46 EUR | ret=+4.18% | cash=0.2%
+2026-05-15 23:13:55  WARNING   [Muy Arriesgado] No se pudieron guardar unidades: Object of type float32 is not JSON serializable
+2026-05-15 23:13:55  INFO      [Muy Arriesgado] muy_arriesgado       | valor= 10,778.70 EUR | ret=+4.18% | cash=0.2%
+2026-05-15 23:13:55  INFO      Rebalanceo completado: 8/8 usuarios procesados.
+2026-05-15 23:13:55  INFO      ============================================================
+2026-05-15 23:13:55  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-15 23:14:22  INFO      Scheduler detenido manualmente.
+2026-05-15 23:14:47  INFO      Scheduler iniciado.
+2026-05-15 23:14:48  INFO      Tablas verificadas/creadas en BD.
+2026-05-15 23:14:48  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-15 23:14:48  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-15 23:14:48  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-15 23:14:48  INFO      ============================================================
+2026-05-15 23:14:48  INFO      REBALANCEO SEMANAL — 2026-05-15 23:14:48
+2026-05-15 23:14:48  INFO      ============================================================
+2026-05-15 23:14:48  INFO      Descargando precios de mercado...
+2026-05-15 23:14:48  INFO      Precios descargados: 31 semanas, 16 activos
+2026-05-15 23:14:49  INFO      Procesando 8 usuario(s)...
+2026-05-15 23:14:49  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:14:50  WARNING   [Íñigo] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(77706cc7-5c12-448b-9c78-47ad875fa081__arriesgado) is not present in table "usuarios".
+
+2026-05-15 23:14:50  INFO      [Íñigo] arriesgado           | valor= 10,029.07 EUR | ret=-0.21% | cash=0.6%
+2026-05-15 23:14:50  INFO      Agente 'normal' cargado desde agente_final_normal.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:14:52  WARNING   [Íñigo] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(6dcef14e-2fc5-4329-b453-9aa484427e87__normal) is not present in table "usuarios".
+
+2026-05-15 23:14:52  INFO      [Íñigo] normal               | valor=  9,989.90 EUR | ret=-0.08% | cash=12.0%
+2026-05-15 23:14:53  WARNING   [Alberto] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(1477c070-e31f-4467-889e-e5843960ea12__normal) is not present in table "usuarios".
+
+2026-05-15 23:14:53  INFO      [Alberto] normal               | valor=  9,973.61 EUR | ret=-0.08% | cash=12.0%
+2026-05-15 23:14:53  INFO      Agente 'muy_conservador' cargado desde agente_final_muy_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:14:54  WARNING   [Muy Conservador] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(bfac48a8-933c-4ac9-a8dc-6e2f28f008cc__muy_conservador) is not present in table "usuarios".
+
+2026-05-15 23:14:54  INFO      [Muy Conservador] muy_conservador      | valor= 10,006.88 EUR | ret=+0.02% | cash=95.3%
+2026-05-15 23:14:54  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:14:55  WARNING   [Conservador] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(24ce8a22-adba-4c6c-9b08-de140407593c__conservador) is not present in table "usuarios".
+
+2026-05-15 23:14:55  INFO      [Conservador] conservador          | valor= 10,004.46 EUR | ret=+0.01% | cash=95.4%
+2026-05-15 23:14:57  WARNING   [Arriesgado] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(ded65820-7276-4ff6-9f66-8cb4bc25f350__arriesgado) is not present in table "usuarios".
+
+2026-05-15 23:14:57  INFO      [Arriesgado] arriesgado           | valor=  9,932.26 EUR | ret=-0.21% | cash=0.6%
+2026-05-15 23:14:57  INFO      Agente 'muy_arriesgado' cargado desde agente_final_muy_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:14:58  WARNING   [Iñigo] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(47151efb-9de7-4be9-819a-0a563954ed70__muy_arriesgado) is not present in table "usuarios".
+
+2026-05-15 23:14:58  INFO      [Iñigo] muy_arriesgado       | valor= 11,193.23 EUR | ret=+4.22% | cash=0.2%
+2026-05-15 23:14:59  WARNING   [Muy Arriesgado] No se pudieron guardar unidades: insert or update on table "historial_cartera" violates foreign key constraint "historial_cartera_usuario_id_fkey"
+DETAIL:  Key (usuario_id)=(bfd592ab-80a5-4885-95b8-079773132de9__muy_arriesgado) is not present in table "usuarios".
+
+2026-05-15 23:14:59  INFO      [Muy Arriesgado] muy_arriesgado       | valor= 11,233.04 EUR | ret=+4.22% | cash=0.2%
+2026-05-15 23:14:59  INFO      Rebalanceo completado: 8/8 usuarios procesados.
+2026-05-15 23:14:59  INFO      ============================================================
+2026-05-15 23:14:59  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-15 23:16:19  INFO      Scheduler detenido manualmente.
+2026-05-15 23:16:30  INFO      Scheduler iniciado.
+2026-05-15 23:16:30  INFO      Tablas verificadas/creadas en BD.
+2026-05-15 23:16:30  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-15 23:16:30  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-15 23:16:30  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-15 23:16:30  INFO      ============================================================
+2026-05-15 23:16:30  INFO      REBALANCEO SEMANAL — 2026-05-15 23:16:30
+2026-05-15 23:16:30  INFO      ============================================================
+2026-05-15 23:16:30  INFO      Descargando precios de mercado...
+2026-05-15 23:16:31  INFO      Precios descargados: 31 semanas, 16 activos
+2026-05-15 23:16:31  INFO      Procesando 8 usuario(s)...
+2026-05-15 23:16:32  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:16:33  INFO      [Íñigo] Unidades guardadas con precios del viernes
+2026-05-15 23:16:33  INFO      [Íñigo] arriesgado           | valor= 10,007.63 EUR | ret=-0.21% | cash=0.6%
+2026-05-15 23:16:33  INFO      Agente 'normal' cargado desde agente_final_normal.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:16:35  WARNING   [Íñigo] No se pudieron guardar unidades: deadlock detected
+DETAIL:  Process 494248 waits for RowShareLock on relation 17552 of database 5; blocked by process 494195.
+Process 494195 waits for AccessExclusiveLock on relation 17579 of database 5; blocked by process 494248.
+HINT:  See server log for query details.
+
+2026-05-15 23:16:35  INFO      [Íñigo] normal               | valor=  9,982.12 EUR | ret=-0.08% | cash=12.0%
+2026-05-15 23:16:37  INFO      [Alberto] Unidades guardadas con precios del viernes
+2026-05-15 23:16:37  INFO      [Alberto] normal               | valor=  9,965.83 EUR | ret=-0.08% | cash=12.0%
+2026-05-15 23:16:37  INFO      Agente 'muy_conservador' cargado desde agente_final_muy_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:16:38  INFO      [Muy Conservador] Unidades guardadas con precios del viernes
+2026-05-15 23:16:38  INFO      [Muy Conservador] muy_conservador      | valor= 10,009.18 EUR | ret=+0.02% | cash=95.3%
+2026-05-15 23:16:38  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:16:39  INFO      [Conservador] Unidades guardadas con precios del viernes
+2026-05-15 23:16:39  INFO      [Conservador] conservador          | valor= 10,005.96 EUR | ret=+0.01% | cash=95.4%
+2026-05-15 23:16:40  INFO      [Arriesgado] Unidades guardadas con precios del viernes
+2026-05-15 23:16:40  INFO      [Arriesgado] arriesgado           | valor=  9,910.94 EUR | ret=-0.21% | cash=0.6%
+2026-05-15 23:16:40  INFO      Agente 'muy_arriesgado' cargado desde agente_final_muy_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:16:42  INFO      [Iñigo] Unidades guardadas con precios del viernes
+2026-05-15 23:16:42  INFO      [Iñigo] muy_arriesgado       | valor= 11,664.93 EUR | ret=+4.21% | cash=0.2%
+2026-05-15 23:16:43  INFO      [Muy Arriesgado] Unidades guardadas con precios del viernes
+2026-05-15 23:16:43  INFO      [Muy Arriesgado] muy_arriesgado       | valor= 11,706.41 EUR | ret=+4.21% | cash=0.2%
+2026-05-15 23:16:43  INFO      Rebalanceo completado: 8/8 usuarios procesados.
+2026-05-15 23:16:43  INFO      ============================================================
+2026-05-15 23:16:43  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-15 23:28:29  INFO      Scheduler detenido manualmente.

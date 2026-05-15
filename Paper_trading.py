@@ -290,6 +290,7 @@ def init_db() -> None:
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS twr REAL DEFAULT 1.0",
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS precios_ref_json TEXT",
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS es_rebalanceo INTEGER DEFAULT 0",
+                "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS unidades_json TEXT",
             ]:
                 try:
                     cur.execute(alter)
@@ -445,11 +446,13 @@ def obtener_movimientos(uid: str, limit: int = 10) -> list[dict]:
 
 
 def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
-    """Devuelve el último registro del historial de un usuario."""
+    """Devuelve el último registro de pesos reales del historial de un usuario.
+    Excluye filas es_rebalanceo=2 (que almacenan unidades, no pesos).
+    """
     with get_conn() as conn:
-        row = _exec(conn, 
+        row = _exec(conn,
             "SELECT fecha, valor_cartera, pesos_json "
-            "FROM historial_cartera WHERE usuario_id = ? "
+            "FROM historial_cartera WHERE usuario_id = ? AND (es_rebalanceo = 0 OR es_rebalanceo = 1) "
             "ORDER BY fecha DESC LIMIT 1",
             (usuario_id,),
         ).fetchone()
@@ -465,10 +468,19 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
             valor = float(raw)
     except Exception:
         valor = 10_000.0
+    # pesos_json en filas 0/1 es siempre un array JSON; proteger igualmente
+    pesos = None
+    if row[2]:
+        try:
+            parsed = json.loads(row[2])
+            if isinstance(parsed, list):
+                pesos = parsed
+        except (json.JSONDecodeError, TypeError):
+            pesos = None
     return {
         "fecha": str(row[0]),
         "valor": valor,
-        "pesos": json.loads(row[2]) if row[2] else None,
+        "pesos": pesos,
     }
 
 
