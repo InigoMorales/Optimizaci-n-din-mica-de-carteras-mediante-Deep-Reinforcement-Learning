@@ -276,3 +276,39 @@ HINT:  See server log for query details.
 2026-05-15 23:16:43  INFO      ============================================================
 2026-05-15 23:16:43  INFO      Scheduler en espera. Ctrl+C para detener.
 2026-05-15 23:28:29  INFO      Scheduler detenido manualmente.
+2026-05-15 23:56:03  INFO      Scheduler iniciado.
+2026-05-15 23:56:03  INFO      Tablas verificadas/creadas en BD.
+2026-05-15 23:56:03  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-15 23:56:03  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-15 23:56:03  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-15 23:56:03  INFO      ============================================================
+2026-05-15 23:56:03  INFO      REBALANCEO SEMANAL — 2026-05-15 23:56:03
+2026-05-15 23:56:03  INFO      ============================================================
+2026-05-15 23:56:03  INFO      Descargando precios de mercado...
+2026-05-15 23:56:04  INFO      Precios descargados: 31 semanas, 16 activos
+2026-05-15 23:56:04  INFO      Procesando 8 usuario(s)...
+2026-05-15 23:56:05  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:56:06  INFO      [Íñigo] Unidades guardadas con precios del viernes
+2026-05-15 23:56:06  INFO      [Íñigo] arriesgado           | valor=  9,986.16 EUR | ret=-0.21% | cash=0.6%
+2026-05-15 23:56:06  INFO      Agente 'normal' cargado desde agente_final_normal.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:56:07  INFO      [Íñigo] Unidades guardadas con precios del viernes
+2026-05-15 23:56:07  INFO      [Íñigo] normal               | valor=  9,974.34 EUR | ret=-0.08% | cash=12.0%
+2026-05-15 23:56:09  INFO      [Alberto] Unidades guardadas con precios del viernes
+2026-05-15 23:56:09  INFO      [Alberto] normal               | valor=  9,958.06 EUR | ret=-0.08% | cash=12.0%
+2026-05-15 23:56:09  INFO      Agente 'muy_conservador' cargado desde agente_final_muy_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:56:10  INFO      [Muy Conservador] Unidades guardadas con precios del viernes
+2026-05-15 23:56:10  INFO      [Muy Conservador] muy_conservador      | valor= 10,011.48 EUR | ret=+0.02% | cash=95.3%
+2026-05-15 23:56:10  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:56:11  INFO      [Conservador] Unidades guardadas con precios del viernes
+2026-05-15 23:56:11  INFO      [Conservador] conservador          | valor= 10,007.46 EUR | ret=+0.01% | cash=95.4%
+2026-05-15 23:56:12  INFO      [Arriesgado] Unidades guardadas con precios del viernes
+2026-05-15 23:56:12  INFO      [Arriesgado] arriesgado           | valor=  9,889.71 EUR | ret=-0.21% | cash=0.6%
+2026-05-15 23:56:12  INFO      Agente 'muy_arriesgado' cargado desde agente_final_muy_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-15 23:56:14  INFO      [Iñigo] Unidades guardadas con precios del viernes
+2026-05-15 23:56:14  INFO      [Iñigo] muy_arriesgado       | valor= 10,309.28 EUR | ret=+4.03% | cash=0.2%
+2026-05-15 23:56:15  INFO      [Muy Arriesgado] Unidades guardadas con precios del viernes
+2026-05-15 23:56:15  INFO      [Muy Arriesgado] muy_arriesgado       | valor= 10,345.97 EUR | ret=+4.03% | cash=0.2%
+2026-05-15 23:56:15  INFO      Rebalanceo completado: 8/8 usuarios procesados.
+2026-05-15 23:56:15  INFO      ============================================================
+2026-05-15 23:56:15  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-16 00:02:49  INFO      Scheduler detenido manualmente.

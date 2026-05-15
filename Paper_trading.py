@@ -446,13 +446,15 @@ def obtener_movimientos(uid: str, limit: int = 10) -> list[dict]:
 
 
 def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
-    """Devuelve el último registro de pesos reales del historial de un usuario.
-    Excluye filas es_rebalanceo=2 (que almacenan unidades, no pesos).
+    """Devuelve el último registro de pesos reales del historial.
+    Excluye filas es_rebalanceo=2 (unidades). Incluye precios_ref_json
+    para que la app calcule valor_base real desde unidades x precios.
     """
     with get_conn() as conn:
         row = _exec(conn,
-            "SELECT fecha, valor_cartera, pesos_json "
-            "FROM historial_cartera WHERE usuario_id = ? AND (es_rebalanceo = 0 OR es_rebalanceo = 1) "
+            "SELECT fecha, valor_cartera, pesos_json, precios_ref_json "
+            "FROM historial_cartera WHERE usuario_id = ? "
+            "AND (es_rebalanceo = 0 OR es_rebalanceo = 1) "
             "ORDER BY fecha DESC LIMIT 1",
             (usuario_id,),
         ).fetchone()
@@ -468,7 +470,6 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
             valor = float(raw)
     except Exception:
         valor = 10_000.0
-    # pesos_json en filas 0/1 es siempre un array JSON; proteger igualmente
     pesos = None
     if row[2]:
         try:
@@ -477,10 +478,17 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
                 pesos = parsed
         except (json.JSONDecodeError, TypeError):
             pesos = None
+    precios_ref = None
+    if row[3]:
+        try:
+            precios_ref = json.loads(row[3])
+        except (json.JSONDecodeError, TypeError):
+            precios_ref = None
     return {
-        "fecha": str(row[0]),
-        "valor": valor,
-        "pesos": pesos,
+        "fecha":       str(row[0]),
+        "valor":       valor,
+        "pesos":       pesos,
+        "precios_ref": precios_ref,
     }
 
 
@@ -1388,7 +1396,18 @@ def pantalla_app() -> None:
     if ultima_entrada and ultima_entrada["pesos"]:
         # Cargar pesos del último rebalanceo (fijos hasta el próximo viernes)
         pesos_vigentes = np.array(ultima_entrada["pesos"], dtype=np.float32)
-        valor_base     = ultima_entrada["valor"]
+        # valor_base = valor real de mercado en el momento del rebalanceo
+        # calculado como Σ(unidades × precios_ref), no el valor del agente
+        _unids_ref = cargar_unidades_db(usr["id"], perfil)
+        _px_ref    = ultima_entrada.get("precios_ref") or {}
+        if _unids_ref and _px_ref:
+            valor_base = sum(
+                float(_unids_ref.get(a, 0.0)) * float(_px_ref.get(a, 0.0))
+                for a in ACTIVOS_RIESGO
+            ) + float(_unids_ref.get("CASH", 0.0))
+            valor_base = max(valor_base, 1.0)
+        else:
+            valor_base = ultima_entrada["valor"]
     else:
         # Primera vez — todo en cash, valor inicial
         n_act          = len(ACTIVOS_RIESGO)
