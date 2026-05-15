@@ -472,6 +472,18 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
     }
 
 
+def guardar_unidades_db(uid: str, perfil: str, unidades: dict) -> None:
+    try:
+        with get_conn() as conn:
+            _exec(conn, "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2", (f"{uid}__{perfil}",))
+            _exec(conn,
+                "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,es_rebalanceo,unidades_json) VALUES (?,?,0,'{}',0,2,?)",
+                (f"{uid}__{perfil}", datetime.now().isoformat(), json.dumps(unidades)),
+            )
+    except Exception:
+        pass
+
+
 def obtener_todos_usuarios_db() -> list:
     """Devuelve todos los usuarios con cuestionario completado."""
     try:
@@ -485,22 +497,18 @@ def obtener_todos_usuarios_db() -> list:
         return []
 
 
-def guardar_snapshot_todos(px_actual: dict, agentes_cache: dict) -> None:
-    """Calcula y guarda el valor actual de cartera para TODOS los usuarios."""
+def guardar_snapshot_todos(px_actual: dict) -> None:
+    """Calcula y guarda el valor actual para TODOS los usuarios usando precios frescos."""
     usuarios = obtener_todos_usuarios_db()
     if not usuarios:
         return
-    from datetime import datetime as _dt
-    ahora = _dt.now().isoformat()
-    for usr_info in usuarios:
-        uid    = usr_info["id"]
-        perfil = usr_info["perfil"]
+    ahora = datetime.now().isoformat()
+    for u in usuarios:
+        uid, perfil = u["id"], u["perfil"]
         try:
-            # Cargar unidades de este usuario
             unidades = cargar_unidades_db(uid, perfil)
             if not unidades:
                 continue
-            # Calcular valor actual
             valor = sum(
                 float(unidades.get(a, 0.0)) * float(px_actual.get(a, 0.0))
                 for a in ACTIVOS_RIESGO
@@ -508,7 +516,6 @@ def guardar_snapshot_todos(px_actual: dict, agentes_cache: dict) -> None:
             ) + float(unidades.get("CASH", 0.0))
             if valor < 1:
                 continue
-            # Guardar snapshot en BD
             with get_conn() as conn:
                 _exec(conn,
                     "INSERT INTO historial_cartera "
@@ -518,33 +525,6 @@ def guardar_snapshot_todos(px_actual: dict, agentes_cache: dict) -> None:
                 )
         except Exception:
             pass
-
-
-def guardar_unidades_db(uid: str, perfil: str, unidades: dict) -> None:
-    try:
-        with get_conn() as conn:
-            _exec(conn, "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2", (f"{uid}__{perfil}",))
-            _exec(conn,
-                "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,es_rebalanceo,unidades_json) VALUES (?,?,0,'{}',0,2,?)",
-                (f"{uid}__{perfil}", datetime.now().isoformat(), json.dumps(unidades)),
-            )
-    except Exception:
-        pass
-
-
-def cargar_pesos_perfil_db(perfil: str):
-    """Carga los últimos pesos calculados para un perfil desde la BD."""
-    try:
-        with get_conn() as conn:
-            row = _exec(conn,
-                "SELECT pesos_json FROM pesos_perfil WHERE perfil=? ORDER BY fecha DESC LIMIT 1",
-                (perfil,),
-            ).fetchone()
-            if row and row[0]:
-                return json.loads(row[0])
-    except Exception:
-        pass
-    return None
 
 
 def cargar_unidades_db(uid: str, perfil: str) -> dict:
@@ -1474,8 +1454,8 @@ def pantalla_app() -> None:
             st.session_state["px_actual"]        = px_nuevo
             st.session_state["fecha_px_detalle"] = str(precios_hoy.index[-1])
             st.session_state["px_ts"]            = ahora_ts
-            # Guardar snapshot de TODOS los usuarios con estos precios
-            guardar_snapshot_todos(px_nuevo, {})
+            # Guardar snapshot para TODOS los usuarios con estos precios
+            guardar_snapshot_todos(px_nuevo)
 
     px_actual = st.session_state.get("px_actual", {})
     st.session_state["px_actual_detalle"] = px_actual
