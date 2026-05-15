@@ -485,18 +485,18 @@ def rebalancear_usuario(
         unidades_nuevas["CASH"] = float(p_cash_val * valor_nuevo)
 
         with get_conn() as conn:
-            # Borrar unidades anteriores
+            # Borrar unidades anteriores de este usuario+perfil
             _exec(conn,
-                "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2",
-                (f"{uid}__{perfil}",)
+                "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2 AND pesos_json=?",
+                (uid, perfil)
             )
-            # Guardar nuevas unidades calculadas con precios del viernes
+            # Guardar nuevas unidades: pesos_json contiene el perfil como clave de búsqueda
             _exec(conn,
                 "INSERT INTO historial_cartera "
                 "(usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,es_rebalanceo,unidades_json) "
-                "VALUES (?,?,?,'{}',0,2,?)",
-                (f"{uid}__{perfil}", datetime.now().isoformat(),
-                 float(valor_nuevo), json.dumps(unidades_nuevas)),
+                "VALUES (?,?,?,?,0,2,?)",
+                (uid, datetime.now().isoformat(),
+                 float(valor_nuevo), perfil, json.dumps(unidades_nuevas)),
             )
         log.info(f"[{nombre}] Unidades guardadas con precios del viernes")
     except Exception as e:

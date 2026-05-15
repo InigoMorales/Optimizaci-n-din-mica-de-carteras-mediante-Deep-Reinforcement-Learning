@@ -475,64 +475,24 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
 def guardar_unidades_db(uid: str, perfil: str, unidades: dict) -> None:
     try:
         with get_conn() as conn:
-            _exec(conn, "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2", (f"{uid}__{perfil}",))
             _exec(conn,
-                "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,es_rebalanceo,unidades_json) VALUES (?,?,0,'{}',0,2,?)",
-                (f"{uid}__{perfil}", datetime.now().isoformat(), json.dumps(unidades)),
+                "DELETE FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2 AND pesos_json=?",
+                (uid, perfil)
+            )
+            _exec(conn,
+                "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,es_rebalanceo,unidades_json) VALUES (?,?,0,?,0,2,?)",
+                (uid, datetime.now().isoformat(), perfil, json.dumps(unidades)),
             )
     except Exception:
         pass
-
-
-def obtener_todos_usuarios_db() -> list:
-    """Devuelve todos los usuarios con cuestionario completado."""
-    try:
-        with get_conn() as conn:
-            rows = _exec(conn,
-                "SELECT id, perfil_asignado, saldo FROM usuarios "
-                "WHERE cuestionario_completado=1 AND perfil_asignado IS NOT NULL",
-            ).fetchall()
-            return [{"id": r[0], "perfil": r[1], "saldo": float(r[2] or 10000)} for r in rows]
-    except Exception:
-        return []
-
-
-def guardar_snapshot_todos(px_actual: dict) -> None:
-    """Calcula y guarda el valor actual para TODOS los usuarios usando precios frescos."""
-    usuarios = obtener_todos_usuarios_db()
-    if not usuarios:
-        return
-    ahora = datetime.now().isoformat()
-    for u in usuarios:
-        uid, perfil = u["id"], u["perfil"]
-        try:
-            unidades = cargar_unidades_db(uid, perfil)
-            if not unidades:
-                continue
-            valor = sum(
-                float(unidades.get(a, 0.0)) * float(px_actual.get(a, 0.0))
-                for a in ACTIVOS_RIESGO
-                if float(px_actual.get(a, 0.0)) > 0
-            ) + float(unidades.get("CASH", 0.0))
-            if valor < 1:
-                continue
-            with get_conn() as conn:
-                _exec(conn,
-                    "INSERT INTO historial_cartera "
-                    "(usuario_id,fecha,valor_cartera,pesos_json,retorno_semana) "
-                    "VALUES (?,?,?,'{}',0)",
-                    (uid, ahora, float(valor)),
-                )
-        except Exception:
-            pass
 
 
 def cargar_unidades_db(uid: str, perfil: str) -> dict:
     try:
         with get_conn() as conn:
             row = _exec(conn,
-                "SELECT unidades_json FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2 ORDER BY fecha DESC LIMIT 1",
-                (f"{uid}__{perfil}",),
+                "SELECT unidades_json FROM historial_cartera WHERE usuario_id=? AND es_rebalanceo=2 AND pesos_json=? ORDER BY fecha DESC LIMIT 1",
+                (uid, perfil),
             ).fetchone()
             if row and row[0]:
                 return json.loads(row[0])
@@ -1450,12 +1410,9 @@ def pantalla_app() -> None:
     if forzar_px or not ultimo_ts or (ahora_ts - ultimo_ts).total_seconds() > 300:
         precios_hoy = descargar_precios_horarios()
         if not precios_hoy.empty:
-            px_nuevo = precios_hoy.iloc[-1].to_dict()
-            st.session_state["px_actual"]        = px_nuevo
+            st.session_state["px_actual"]        = precios_hoy.iloc[-1].to_dict()
             st.session_state["fecha_px_detalle"] = str(precios_hoy.index[-1])
             st.session_state["px_ts"]            = ahora_ts
-            # Guardar snapshot para TODOS los usuarios con estos precios
-            guardar_snapshot_todos(px_nuevo)
 
     px_actual = st.session_state.get("px_actual", {})
     st.session_state["px_actual_detalle"] = px_actual
