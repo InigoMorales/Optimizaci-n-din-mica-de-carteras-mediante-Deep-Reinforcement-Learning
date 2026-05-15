@@ -143,7 +143,7 @@ def _exec(conn, sql: str, params=()):
         cur = conn.cursor()
         cur.execute(_q(sql), params)
         return cur
-    return _exec(conn, sql, params)
+    return conn.execute(sql, params)
 
 
 def init_db() -> None:
@@ -209,11 +209,13 @@ def obtener_todos_usuarios() -> list[dict]:
 
 
 def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
-    """Devuelve el último registro del historial de un usuario."""
+    """Devuelve el último registro de pesos reales del historial.
+    Excluye filas es_rebalanceo=2 (unidades) para no confundirlas con pesos.
+    """
     with get_conn() as conn:
-        row = _exec(conn, 
+        row = _exec(conn,
             "SELECT fecha, valor_cartera, pesos_json "
-            "FROM historial_cartera WHERE usuario_id = ? "
+            "FROM historial_cartera WHERE usuario_id = ? AND (es_rebalanceo = 0 OR es_rebalanceo = 1) "
             "ORDER BY fecha DESC LIMIT 1",
             (usuario_id,),
         ).fetchone()
@@ -223,10 +225,18 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
         valor = float(row[1])
     except Exception:
         valor = 10_000.0
+    pesos = None
+    if row[2]:
+        try:
+            parsed = json.loads(row[2])
+            if isinstance(parsed, list):
+                pesos = parsed
+        except (json.JSONDecodeError, TypeError):
+            pesos = None
     return {
         "fecha":  row[0],
         "valor":  valor,
-        "pesos":  json.loads(row[2]) if row[2] else None,
+        "pesos":  pesos,
     }
 
 
