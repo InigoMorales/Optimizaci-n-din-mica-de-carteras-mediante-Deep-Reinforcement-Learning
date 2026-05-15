@@ -480,9 +480,9 @@ def rebalancear_usuario(
         for i, activo in enumerate(ACTIVOS_RIESGO):
             peso_i = float(pesos_nuevos[i]) if i < len(pesos_nuevos) else 0.0
             px_a   = float(px_ref_dict.get(activo, 0.0))
-            unidades_nuevas[activo] = (peso_i * valor_nuevo / px_a) if px_a > 1e-8 else 0.0
+            unidades_nuevas[activo] = float((peso_i * valor_nuevo / px_a) if px_a > 1e-8 else 0.0)
         p_cash_val = float(pesos_nuevos[-1]) if len(pesos_nuevos) > len(ACTIVOS_RIESGO) else 0.0
-        unidades_nuevas["CASH"] = p_cash_val * valor_nuevo
+        unidades_nuevas["CASH"] = float(p_cash_val * valor_nuevo)
 
         with get_conn() as conn:
             # Borrar unidades anteriores
