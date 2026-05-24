@@ -1790,76 +1790,50 @@ def pantalla_app() -> None:
             cl = "neg" if met["mdd"] < 0 else "pos"
             st.markdown(mk("Max Drawdown", f"{met['mdd']*100:.1f}%", cl), unsafe_allow_html=True)
 
-        # Graficas
-        gi, gd = st.columns([3, 2])
-        with gi:
-            st.markdown("#### Evolucion de cartera")
-            if len(st.session_state.historico) > 1:
-                df_h = pd.DataFrame(st.session_state.historico)
-                df_h["fecha"] = pd.to_datetime(df_h["fecha"], format="mixed", dayfirst=False)
-                rgb  = tuple(int(info["color"].lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
-                fig  = go.Figure(go.Scatter(
-                    x=df_h["fecha"], y=df_h["valor"],
-                    mode="lines", line=dict(color=info["color"], width=2, shape="spline", smoothing=1.2),
-                    fill="tozeroy", fillcolor=f"rgba{rgb + (0.07,)}",
-                ))
-                fig.update_layout(
-                    template="plotly_dark" if dark else "plotly_white",
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    height=260, margin=dict(l=0,r=0,t=10,b=0), showlegend=False,
-                    xaxis=dict(showgrid=False, color=txt_c),
-                    yaxis=dict(showgrid=True, gridcolor=grid_c,
-                               tickprefix="EUR ", tickformat=",.0f", color=txt_c),
-                )
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-            else:
-                st.info("Historico insuficiente.")
-
-        with gd:
-            st.markdown("#### Asignacion actual")
-            # Calcular pesos REALES desde unidades × precio
-            # Si px_actual vacío (mercado cerrado), usar precios_ref del rebalanceo
-            _px_para_donut = px_actual if px_actual else {}
-            if not _px_para_donut and ultima_entrada and ultima_entrada.get("precios_ref"):
-                _px_para_donut = ultima_entrada["precios_ref"]
-            if not _px_para_donut:
-                try:
-                    with get_conn() as _c:
-                        _r = _exec(_c,
-                            "SELECT precios_ref_json FROM historial_cartera "
-                            "WHERE usuario_id=? AND es_rebalanceo=1 AND precios_ref_json IS NOT NULL "
-                            "ORDER BY fecha DESC LIMIT 1", (usr["id"],)).fetchone()
-                    if _r and _r[0]:
-                        _px_para_donut = json.loads(_r[0])
-                except Exception:
-                    pass
-            _unids_donut = unidades or cargar_unidades_db(usr["id"], perfil)
-            if _unids_donut and _px_para_donut:
-                _vals_reales = [float(_unids_donut.get(a,0.0)) * float(_px_para_donut.get(a,0.0)) for a in ACTIVOS_RIESGO]
-                _cash_real   = float(_unids_donut.get("CASH", 0.0))
-                _total_real  = sum(_vals_reales) + _cash_real
-                vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real] if _total_real > 0 else list(pr) + [p_cash]
-            else:
-                vals_donut = list(pr) + [p_cash]
-            # Usar df_p para que donut y tabla sean idénticos
-            _df_donut = pd.DataFrame({
-                "label": [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"],
-                "peso":  vals_donut,
-            })
-            _df_donut = _df_donut[_df_donut["peso"] > 0.001]
+        # Asignacion actual — donut grande centrado
+        st.markdown("#### Asignación actual")
+        _px_para_donut = px_actual if px_actual else {}
+        if not _px_para_donut and ultima_entrada and ultima_entrada.get("precios_ref"):
+            _px_para_donut = ultima_entrada["precios_ref"]
+        if not _px_para_donut:
+            try:
+                with get_conn() as _c:
+                    _r = _exec(_c,
+                        "SELECT precios_ref_json FROM historial_cartera "
+                        "WHERE usuario_id=? AND es_rebalanceo=1 AND precios_ref_json IS NOT NULL "
+                        "ORDER BY fecha DESC LIMIT 1", (usr["id"],)).fetchone()
+                if _r and _r[0]:
+                    _px_para_donut = json.loads(_r[0])
+            except Exception:
+                pass
+        _unids_donut = unidades or cargar_unidades_db(usr["id"], perfil)
+        if _unids_donut and _px_para_donut:
+            _vals_reales = [float(_unids_donut.get(a,0.0)) * float(_px_para_donut.get(a,0.0)) for a in ACTIVOS_RIESGO]
+            _cash_real   = float(_unids_donut.get("CASH", 0.0))
+            _total_real  = sum(_vals_reales) + _cash_real
+            vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real] if _total_real > 0 else list(pr) + [p_cash]
+        else:
+            vals_donut = list(pr) + [p_cash]
+        _df_donut = pd.DataFrame({
+            "label": [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"],
+            "peso":  vals_donut,
+        })
+        _df_donut = _df_donut[_df_donut["peso"] > 0.001]
+        _col_izq, _col_cen, _col_der = st.columns([1, 3, 1])
+        with _col_cen:
             fig2 = go.Figure(go.Pie(
                 labels=_df_donut["label"].tolist(),
                 values=(_df_donut["peso"] * 100).round(2).tolist(),
-                hole=0.58,
+                hole=0.5,
                 marker=dict(colors=px.colors.qualitative.Set3,
                             line=dict(color=bg_p, width=2)),
-                textfont=dict(family="JetBrains Mono", size=10),
+                textfont=dict(family="JetBrains Mono", size=12),
                 textinfo="label+percent",
                 hovertemplate="%{label}<br>%{value:.2f}%<extra></extra>",
             ))
             fig2.update_layout(
                 template="plotly_dark" if dark else "plotly_white",
-                paper_bgcolor="rgba(0,0,0,0)", height=260,
+                paper_bgcolor="rgba(0,0,0,0)", height=420,
                 margin=dict(l=0,r=0,t=10,b=0), showlegend=False,
             )
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
