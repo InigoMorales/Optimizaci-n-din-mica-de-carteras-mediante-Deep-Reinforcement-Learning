@@ -1494,12 +1494,17 @@ def pantalla_app() -> None:
     # ── DEBUG TEMPORAL ────────────────────────────────────────────────────
     import math
     if not valor or math.isnan(valor):
-        st.warning(f"⚠️ DEBUG: valor=NaN | valor_base={valor_base} | "
-                   f"unidades={'OK' if unidades else 'VACÍO'} | "
-                   f"px_actual={'OK' if px_actual else 'VACÍO'} | "
-                   f"ultima_entrada={'OK' if ultima_entrada else 'NONE'} | "
-                   f"_unids_ref={'OK' if _unids_ref else 'VACÍO'} | "
-                   f"_px_ref={'OK' if _px_ref else 'VACÍO'}")
+        # Calcular contribución de cada activo para encontrar el NaN
+        desglose = {}
+        for a in ACTIVOS_RIESGO:
+            u = float(unidades.get(a, 0.0))
+            p = float(px_actual.get(a, 0.0))
+            v = u * p
+            if math.isnan(v) or math.isinf(v) or p == 0:
+                desglose[a] = f"u={u:.4f} p={p:.4f} → {v}"
+        st.warning(f"⚠️ DEBUG NaN | valor_base={valor_base:.2f} | "
+                   f"CASH={unidades.get('CASH','?')} | "
+                   f"Activos problemáticos: {desglose if desglose else 'ninguno'}")
     # ── FIN DEBUG ─────────────────────────────────────────────────────────
 
 
