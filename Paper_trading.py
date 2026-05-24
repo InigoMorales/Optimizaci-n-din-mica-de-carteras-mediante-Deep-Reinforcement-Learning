@@ -794,15 +794,25 @@ def decidir_pesos(agente: AgenteSAC, estado: np.ndarray) -> np.ndarray:
 def calcular_metricas(hist: list[dict]) -> dict:
     if len(hist) < 2:
         return {"sharpe": 0.0, "cagr": 0.0, "mdd": 0.0}
-    vals = np.array([float(h["valor"]) for h in hist if h.get("valor") is not None])
+    vals = np.array([float(h["valor"]) for h in hist
+                     if h.get("valor") is not None and np.isfinite(float(h["valor"])) and float(h["valor"]) > 0])
+    if len(vals) < 2:
+        return {"sharpe": 0.0, "cagr": 0.0, "mdd": 0.0}
     rets = np.diff(vals) / vals[:-1]
+    rets = rets[np.isfinite(rets)]
     n    = len(rets)
+    if n < 1:
+        return {"sharpe": 0.0, "cagr": 0.0, "mdd": 0.0}
     cagr = (vals[-1] / vals[0]) ** (FACTOR_ANUALIZACION / n) - 1.0
     sh   = (rets.mean() / rets.std() * np.sqrt(FACTOR_ANUALIZACION)
             if n > 1 and rets.std() > 0 else 0.0)
     acum = (1 + rets).cumprod()
     mdd  = float((acum / np.maximum.accumulate(acum) - 1).min()) if len(acum) else 0.0
-    return {"sharpe": float(sh), "cagr": float(cagr), "mdd": float(mdd)}
+    return {
+        "sharpe": float(sh)   if np.isfinite(sh)   else 0.0,
+        "cagr":   float(cagr) if np.isfinite(cagr) else 0.0,
+        "mdd":    float(mdd)  if np.isfinite(mdd)  else 0.0,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1836,7 +1846,7 @@ def pantalla_app() -> None:
             mask = np.array(vals) > 0.01
             fig2 = go.Figure(go.Pie(
                 labels=[l for l,m in zip(lbls,mask) if m],
-                values=[round(v*100, 2) for v,m in zip(vals,mask) if m],
+                values=[v for v,m in zip(vals,mask) if m],
                 hole=0.58,
                 marker=dict(colors=px.colors.qualitative.Set3,
                             line=dict(color=bg_p, width=2)),
@@ -1873,16 +1883,18 @@ def pantalla_app() -> None:
                          hide_index=True, use_container_width=True,
                          height=min(50+len(df_p)*36, 400))
         with ci:
-            rv  = float(sum(pr[:8]))
-            rf  = float(sum(pr[8:13]))
-            com = float(sum(pr[13:15]))
-            rei = float(pr[15]) if len(pr) > 15 else 0.0
+            _vd = vals_donut
+            rv  = float(sum(_vd[i] for i in range(min(8, len(_vd)))))
+            rf  = float(sum(_vd[i] for i in range(8, min(13, len(_vd)))))
+            com = float(sum(_vd[i] for i in range(13, min(15, len(_vd)))))
+            rei = float(_vd[15]) if len(_vd) > 15 else 0.0
+            csh = float(_vd[16]) if len(_vd) > 16 else 0.0
             st.markdown(f"""<div class='info-box'>
 <b>Renta Variable</b> {rv*100:.1f}%<br>
 <b>Renta Fija</b> {rf*100:.1f}%<br>
 <b>Commodities</b> {com*100:.1f}%<br>
 <b>REITs</b> {rei*100:.1f}%<br>
-<b>Cash</b> {p_cash*100:.1f}%
+<b>Cash</b> {csh*100:.1f}%
 </div>""", unsafe_allow_html=True)
 
         # Retornos mercado
