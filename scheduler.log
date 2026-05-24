@@ -312,3 +312,45 @@ HINT:  See server log for query details.
 2026-05-15 23:56:15  INFO      ============================================================
 2026-05-15 23:56:15  INFO      Scheduler en espera. Ctrl+C para detener.
 2026-05-16 00:02:49  INFO      Scheduler detenido manualmente.
+2026-05-16 00:11:24  INFO      Scheduler iniciado.
+2026-05-16 00:11:24  INFO      Tablas verificadas/creadas en BD.
+2026-05-16 00:11:24  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-16 00:11:24  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-16 00:11:24  INFO      --forzar activado: ejecutando rebalanceo inmediato...
+2026-05-16 00:11:24  INFO      ============================================================
+2026-05-16 00:11:24  INFO      REBALANCEO SEMANAL — 2026-05-16 00:11:24
+2026-05-16 00:11:24  INFO      ============================================================
+2026-05-16 00:11:24  INFO      Descargando precios de mercado...
+2026-05-16 00:11:25  INFO      Precios descargados: 30 semanas, 16 activos
+2026-05-16 00:11:25  INFO      Procesando 8 usuario(s)...
+2026-05-16 00:11:26  INFO      Agente 'arriesgado' cargado desde agente_final_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-16 00:11:27  INFO      [Íñigo] Unidades guardadas con precios del viernes
+2026-05-16 00:11:27  INFO      [Íñigo] arriesgado           | valor=  9,980.14 EUR | ret=+0.00% | cash=0.7%
+2026-05-16 00:11:27  INFO      Agente 'normal' cargado desde agente_final_normal.pt (dim_estado=164, dim_accion=17)
+2026-05-16 00:11:28  INFO      [Íñigo] Unidades guardadas con precios del viernes
+2026-05-16 00:11:28  INFO      [Íñigo] normal               | valor=  9,982.26 EUR | ret=+0.00% | cash=11.3%
+2026-05-16 00:11:30  INFO      [Alberto] Unidades guardadas con precios del viernes
+2026-05-16 00:11:30  INFO      [Alberto] normal               | valor=  9,982.26 EUR | ret=+0.00% | cash=11.3%
+2026-05-16 00:11:30  INFO      Agente 'muy_conservador' cargado desde agente_final_muy_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-16 00:11:31  INFO      [Muy Conservador] Unidades guardadas con precios del viernes
+2026-05-16 00:11:31  INFO      [Muy Conservador] muy_conservador      | valor=  9,999.06 EUR | ret=+0.00% | cash=95.3%
+2026-05-16 00:11:31  INFO      Agente 'conservador' cargado desde agente_final_conservador.pt (dim_estado=164, dim_accion=17)
+2026-05-16 00:11:32  INFO      [Conservador] Unidades guardadas con precios del viernes
+2026-05-16 00:11:32  INFO      [Conservador] conservador          | valor=  9,999.08 EUR | ret=+0.00% | cash=95.4%
+2026-05-16 00:11:33  INFO      [Arriesgado] Unidades guardadas con precios del viernes
+2026-05-16 00:11:33  INFO      [Arriesgado] arriesgado           | valor=  9,980.14 EUR | ret=+0.00% | cash=0.7%
+2026-05-16 00:11:33  INFO      Agente 'muy_arriesgado' cargado desde agente_final_muy_arriesgado.pt (dim_estado=164, dim_accion=17)
+2026-05-16 00:11:35  INFO      [Iñigo] Unidades guardadas con precios del viernes
+2026-05-16 00:11:35  INFO      [Iñigo] muy_arriesgado       | valor= 10,034.51 EUR | ret=+0.36% | cash=0.2%
+2026-05-16 00:11:36  INFO      [Muy Arriesgado] Unidades guardadas con precios del viernes
+2026-05-16 00:11:36  INFO      [Muy Arriesgado] muy_arriesgado       | valor=  9,980.04 EUR | ret=+0.00% | cash=0.2%
+2026-05-16 00:11:36  INFO      Rebalanceo completado: 8/8 usuarios procesados.
+2026-05-16 00:11:36  INFO      ============================================================
+2026-05-16 00:11:36  INFO      Scheduler en espera. Ctrl+C para detener.
+2026-05-23 20:22:14  INFO      Scheduler iniciado.
+2026-05-23 20:22:14  INFO      Tablas verificadas/creadas en BD.
+2026-05-23 20:22:14  INFO      BD: /Users/inigo/Optimizaci-n-din-mica-de-carteras-mediante-Deep-Reinforcement-Learning/paper_trading.db
+2026-05-23 20:22:14  INFO      Rebalanceo programado: cada viernes a las 22:00
+2026-05-23 20:22:15  INFO      Hoy es sabado — sin rebalanceos pendientes.
+2026-05-23 20:22:15  INFO      Proximo rebalanceo: viernes 29/05 a las 22:00
+2026-05-23 20:22:15  INFO      Scheduler en espera. Ctrl+C para detener.

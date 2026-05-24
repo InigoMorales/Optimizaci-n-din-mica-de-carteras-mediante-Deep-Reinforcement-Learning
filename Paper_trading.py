@@ -1397,17 +1397,21 @@ def pantalla_app() -> None:
         # Cargar pesos del último rebalanceo (fijos hasta el próximo viernes)
         pesos_vigentes = np.array(ultima_entrada["pesos"], dtype=np.float32)
         # valor_base = valor real de mercado en el momento del rebalanceo
-        # calculado como Σ(unidades × precios_ref), no el valor del agente
+        # Intentar calcularlo desde unidades × precios_ref del rebalanceo
         _unids_ref = cargar_unidades_db(usr["id"], perfil)
         _px_ref    = ultima_entrada.get("precios_ref") or {}
         if _unids_ref and _px_ref:
-            valor_base = sum(
+            _vb = sum(
                 float(_unids_ref.get(a, 0.0)) * float(_px_ref.get(a, 0.0))
                 for a in ACTIVOS_RIESGO
             ) + float(_unids_ref.get("CASH", 0.0))
-            valor_base = max(valor_base, 1.0)
+            valor_base = _vb if _vb > 1.0 else float(ultima_entrada["valor"])
         else:
-            valor_base = ultima_entrada["valor"]
+            # Fallback: usar saldo del usuario como valor_base
+            valor_base = float(usr.get("saldo", 10_000.0))
+        # Nunca dejar valor_base en 0 o NaN
+        if not valor_base or valor_base != valor_base:  # NaN check
+            valor_base = float(usr.get("saldo", 10_000.0))
     else:
         # Primera vez — todo en cash, valor inicial
         n_act          = len(ACTIVOS_RIESGO)
