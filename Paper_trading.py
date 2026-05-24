@@ -90,77 +90,77 @@ SEMANAS_HISTORIA    = 26
 PREGUNTAS = [
     {
         "id": "edad",
-        "texto": "Cuantos anos tienes?",
+        "texto": "¿Cuántos años tienes?",
         "opciones": [
-            ("Menos de 25 anos",   5),
-            ("Entre 25 y 35 anos", 4),
-            ("Entre 35 y 50 anos", 3),
-            ("Entre 50 y 65 anos", 2),
-            ("Mas de 65 anos",     1),
+            ("Menos de 25 años",   5),
+            ("Entre 25 y 35 años", 4),
+            ("Entre 35 y 50 años", 3),
+            ("Entre 50 y 65 años", 2),
+            ("Más de 65 años",     1),
         ],
     },
     {
         "id": "caida",
-        "texto": "Imagina que inviertes 10.000 euros y al mes siguiente valen 8.000 euros. Que harias?",
+        "texto": "Imagina que inviertes 10.000 euros y al mes siguiente valen 8.000 euros. ¿Qué harías?",
         "opciones": [
-            ("Los saco todos, esto no es para mi",                        1),
-            ("Saco una parte para no perder mas",                         2),
+            ("Los saco todos, esto no es para mí",                        1),
+            ("Saco una parte para no perder más",                         2),
             ("No hago nada, espero a que se recupere",                    3),
             ("Depende de por que ha bajado",                              4),
-            ("Meto mas dinero, esta mas barato - es una oportunidad",     5),
+            ("Meto más dinero, está más barato — es una oportunidad",     5),
         ],
     },
     {
         "id": "objetivo",
-        "texto": "Para que es este dinero?",
+        "texto": "¿Para qué es este dinero?",
         "opciones": [
             ("Por si acaso, mi fondo de emergencia",                     1),
-            ("Para algo concreto en los proximos anos (casa, coche...)", 2),
+            ("Para algo concreto en los próximos años (casa, coche...)", 2),
             ("Para dejar algo a mis hijos o familia",                    3),
-            ("Para complementar mi pension algun dia",                   4),
-            ("No tengo un plan especifico, quiero que crezca",           5),
+            ("Para complementar mi pensión algún día",                   4),
+            ("No tengo un plan específico, quiero que crezca",           5),
         ],
     },
     {
         "id": "sueldo",
         "texto": (
             "Te ofrecen elegir entre dos opciones de sueldo:\n\n"
-            "Opcion A: sueldo fijo de 1.900 euros al mes\n\n"
-            "Opcion B: lanzas una moneda. Si sale cara cobras 1.000 euros, "
+            "Opción A: sueldo fijo de 1.900 euros al mes\n\n"
+            "Opción B: lanzas una moneda. Si sale cara cobras 1.000 euros, "
             "si sale cruz cobras 3.000 euros\n\n"
-            "Cual elegirías?"
+            "¿Cuál elegirías?"
         ),
         "opciones": [
             ("El fijo de 1.900 euros, sin dudarlo", 1),
-            ("Me lo tendria que pensar",             3),
+            ("Me lo tendría que pensar",             3),
             ("La moneda, prefiero arriesgar",        5),
         ],
     },
     {
         "id": "plazo",
-        "texto": "Cuando crees que necesitaras este dinero?",
+        "texto": "¿Cuándo crees que necesitarás este dinero?",
         "opciones": [
-            ("Podria necesitarlo en cualquier momento", 1),
-            ("En los proximos 2 anos",                  2),
+            ("Podría necesitarlo en cualquier momento", 1),
+            ("En los próximos 2 años",                  2),
             ("No lo se",                                3),
-            ("En 5 o 10 anos",                          4),
-            ("No lo necesitare en mucho tiempo",        5),
+            ("En 5 o 10 años",                          4),
+            ("No lo necesitaré en mucho tiempo",        5),
         ],
     },
     {
         "id": "importancia",
-        "texto": "Como de importante es este dinero para ti respecto a todo lo que tienes?",
+        "texto": "¿Cómo de importante es este dinero para ti respecto a todo lo que tienes?",
         "opciones": [
             ("Es casi todo lo que tengo",                          1),
-            ("Es bastante, me afectaria mucho perderlo",           2),
-            ("Es una parte, me afectaria pero lo superaria",       3),
+            ("Es bastante, me afectaría mucho perderlo",           2),
+            ("Es una parte, me afectaría pero lo superaría",       3),
             ("Es relativamente poco de todo lo que tengo",         4),
-            ("Es una cantidad pequena, no me cambiaria la vida",   5),
+            ("Es una cantidad pequeña, no me cambiaría la vida",   5),
         ],
     },
     {
         "id": "decision",
-        "texto": "Cuando tomas decisiones importantes en tu vida, como sueles actuar?",
+        "texto": "¿Cuándo tomas decisiones importantes en tu vida, cómo sueles actuar?",
         "opciones": [
             ("Voy siempre a lo seguro aunque gane menos",              1),
             ("Prefiero seguridad pero acepto algo de riesgo",          2),
@@ -1083,7 +1083,7 @@ def pantalla_cuestionario() -> None:
         st.markdown(f"""
 <div style='font-family:Sora;font-size:22px;font-weight:700;margin-bottom:6px;'>Cuentanos un poco sobre ti</div>
 <div style='font-size:13px;color:#64748b;margin-bottom:20px;'>
-    Hola {usr['nombre']}, estas preguntas nos ayudan a elegir la estrategia mas adecuada para ti.
+    Hola {usr['nombre']}, estas preguntas nos ayudan a elegir la estrategia más adecuada para ti.
 </div>
 <div class='pb-out'><div class='pb-in' style='width:{pct}%;'></div></div>
 <div class='q-hdr'>Pregunta {q_idx+1} de {n}</div>""", unsafe_allow_html=True)
@@ -1283,7 +1283,7 @@ def pantalla_app() -> None:
                 except Exception:
                     ts_local = ts
                 ultima_hora = ts_local.strftime("%d/%m %H:%M")
-                st.caption(f"Precio al: {ultima_hora} | Refresca en 15 min")
+                st.caption(f"Precio al: {ultima_hora} | Refresca en 5 min")
             else:
                 st.caption(f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
         except Exception:
@@ -1350,7 +1350,7 @@ def pantalla_app() -> None:
     # ── Autorefresh cada 15 minutos ────────────────────────────────────────
     try:
         from streamlit_autorefresh import st_autorefresh
-        st_autorefresh(interval=15 * 60 * 1000, key="autorefresh_mercado")
+        st_autorefresh(interval=5 * 60 * 1000, key="autorefresh_mercado")
     except ImportError:
         pass  # si no está instalado, no pasa nada
 
@@ -1465,6 +1465,23 @@ def pantalla_app() -> None:
             st.session_state["px_ts"]            = ahora_ts
 
     px_actual = st.session_state.get("px_actual", {})
+    # Filtrar NaN de futuros (GC=F, HG=F) usando último precio válido conocido
+    import math
+    _px_clean = {}
+    _px_cache = st.session_state.get("px_cache_valido", {})
+    for a, v in px_actual.items():
+        try:
+            f = float(v)
+            if not math.isnan(f) and f > 0:
+                _px_clean[a] = f
+                _px_cache[a] = f  # guardar como último precio válido
+            elif a in _px_cache:
+                _px_clean[a] = _px_cache[a]  # usar último válido
+        except Exception:
+            if a in _px_cache:
+                _px_clean[a] = _px_cache[a]
+    st.session_state["px_cache_valido"] = _px_cache
+    px_actual = _px_clean
     st.session_state["px_actual_detalle"] = px_actual
 
     # Cargar unidades: session_state → BD → calcular por primera vez
@@ -1491,21 +1508,7 @@ def pantalla_app() -> None:
     else:
         valor = valor_base
 
-    # ── DEBUG TEMPORAL ────────────────────────────────────────────────────
-    import math
-    if not valor or math.isnan(valor):
-        # Calcular contribución de cada activo para encontrar el NaN
-        desglose = {}
-        for a in ACTIVOS_RIESGO:
-            u = float(unidades.get(a, 0.0))
-            p = float(px_actual.get(a, 0.0))
-            v = u * p
-            if math.isnan(v) or math.isinf(v) or p == 0:
-                desglose[a] = f"u={u:.4f} p={p:.4f} → {v}"
-        st.warning(f"⚠️ DEBUG NaN | valor_base={valor_base:.2f} | "
-                   f"CASH={unidades.get('CASH','?')} | "
-                   f"Activos problemáticos: {desglose if desglose else 'ninguno'}")
-    # ── FIN DEBUG ─────────────────────────────────────────────────────────
+
 
 
     cap   = st.session_state.get("capital_inicial", 10_000.0)
