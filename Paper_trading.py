@@ -560,6 +560,8 @@ def cargar_historial_db(uid: str) -> list[dict]:
     result = []
     for r in rows:
         try:
+            if r[1] is None:
+                continue  # ignorar filas con valor_cartera NULL
             fecha   = str(r[0])
             # r[1] puede ser float, int, str o bytes según versión de SQLite
             raw_val = r[1]
@@ -1357,7 +1359,9 @@ def pantalla_app() -> None:
         hist_bd = cargar_historial_db(usr["id"])
         if hist_bd:
             st.session_state.historico = hist_bd
-            st.session_state.valor_cartera = hist_bd[-1]["valor"]
+            _last_val = hist_bd[-1].get("valor")
+            if _last_val and _last_val == _last_val:  # no None, no NaN
+                st.session_state.valor_cartera = float(_last_val)
 
     # ── Descargar datos ────────────────────────────────────────────────────
     with st.spinner("Descargando datos..."):
