@@ -1491,6 +1491,17 @@ def pantalla_app() -> None:
     else:
         valor = valor_base
 
+    # ── DEBUG TEMPORAL ────────────────────────────────────────────────────
+    import math
+    if not valor or math.isnan(valor):
+        st.warning(f"⚠️ DEBUG: valor=NaN | valor_base={valor_base} | "
+                   f"unidades={'OK' if unidades else 'VACÍO'} | "
+                   f"px_actual={'OK' if px_actual else 'VACÍO'} | "
+                   f"ultima_entrada={'OK' if ultima_entrada else 'NONE'} | "
+                   f"_unids_ref={'OK' if _unids_ref else 'VACÍO'} | "
+                   f"_px_ref={'OK' if _px_ref else 'VACÍO'}")
+    # ── FIN DEBUG ─────────────────────────────────────────────────────────
+
 
     cap   = st.session_state.get("capital_inicial", 10_000.0)
     fecha = precios.index[-1]
