@@ -1807,13 +1807,28 @@ def pantalla_app() -> None:
 
         with gd:
             st.markdown("#### Asignacion actual")
-            # Calcular pesos REALES desde unidades × precio actual
-            # unidades y px_actual ya están calculados más arriba en esta misma función
-            _vals_reales = [float(unidades.get(a,0.0)) * float(px_actual.get(a,0.0)) for a in ACTIVOS_RIESGO] if unidades and px_actual else []
-            _cash_real   = float(unidades.get("CASH", 0.0)) if unidades else p_cash * valor_base
-            _total_real  = sum(_vals_reales) + _cash_real if _vals_reales else 0.0
-            if _total_real > 0:
-                vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real]
+            # Calcular pesos REALES desde unidades × precio
+            # Si px_actual vacío (mercado cerrado), usar precios_ref del rebalanceo
+            _px_para_donut = px_actual if px_actual else {}
+            if not _px_para_donut and ultima_entrada and ultima_entrada.get("precios_ref"):
+                _px_para_donut = ultima_entrada["precios_ref"]
+            if not _px_para_donut:
+                try:
+                    with get_conn() as _c:
+                        _r = _exec(_c,
+                            "SELECT precios_ref_json FROM historial_cartera "
+                            "WHERE usuario_id=? AND es_rebalanceo=1 AND precios_ref_json IS NOT NULL "
+                            "ORDER BY fecha DESC LIMIT 1", (usr["id"],)).fetchone()
+                    if _r and _r[0]:
+                        _px_para_donut = json.loads(_r[0])
+                except Exception:
+                    pass
+            _unids_donut = unidades or cargar_unidades_db(usr["id"], perfil)
+            if _unids_donut and _px_para_donut:
+                _vals_reales = [float(_unids_donut.get(a,0.0)) * float(_px_para_donut.get(a,0.0)) for a in ACTIVOS_RIESGO]
+                _cash_real   = float(_unids_donut.get("CASH", 0.0))
+                _total_real  = sum(_vals_reales) + _cash_real
+                vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real] if _total_real > 0 else list(pr) + [p_cash]
             else:
                 vals_donut = list(pr) + [p_cash]
             lbls = [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"]
@@ -1821,12 +1836,13 @@ def pantalla_app() -> None:
             mask = np.array(vals) > 0.01
             fig2 = go.Figure(go.Pie(
                 labels=[l for l,m in zip(lbls,mask) if m],
-                values=[v for v,m in zip(vals,mask) if m],
+                values=[round(v*100, 2) for v,m in zip(vals,mask) if m],
                 hole=0.58,
                 marker=dict(colors=px.colors.qualitative.Set3,
                             line=dict(color=bg_p, width=2)),
                 textfont=dict(family="JetBrains Mono", size=10),
                 textinfo="label+percent",
+                hovertemplate="%{label}<br>%{percent}<extra></extra>",
             ))
             fig2.update_layout(
                 template="plotly_dark" if dark else "plotly_white",
