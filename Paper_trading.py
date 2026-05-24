@@ -1807,17 +1807,13 @@ def pantalla_app() -> None:
 
         with gd:
             st.markdown("#### Asignacion actual")
-            # Calcular pesos REALES desde unidades × precio actual (no pesos del agente)
-            _unids_donut = st.session_state.get(f"unidades_{usr['id']}_{perfil}", {})
-            _px_donut    = st.session_state.get("px_actual_detalle", {})
-            if _unids_donut and _px_donut:
-                _vals_reales = [float(_unids_donut.get(a,0.0)) * float(_px_donut.get(a,0.0)) for a in ACTIVOS_RIESGO]
-                _cash_real   = float(_unids_donut.get("CASH", 0.0))
-                _total_real  = sum(_vals_reales) + _cash_real
-                if _total_real > 0:
-                    vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real]
-                else:
-                    vals_donut = list(pr) + [p_cash]
+            # Calcular pesos REALES desde unidades × precio actual
+            # unidades y px_actual ya están calculados más arriba en esta misma función
+            _vals_reales = [float(unidades.get(a,0.0)) * float(px_actual.get(a,0.0)) for a in ACTIVOS_RIESGO] if unidades and px_actual else []
+            _cash_real   = float(unidades.get("CASH", 0.0)) if unidades else p_cash * valor_base
+            _total_real  = sum(_vals_reales) + _cash_real if _vals_reales else 0.0
+            if _total_real > 0:
+                vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real]
             else:
                 vals_donut = list(pr) + [p_cash]
             lbls = [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"]
@@ -1841,20 +1837,11 @@ def pantalla_app() -> None:
 
         # Tabla
         st.markdown("#### Pesos detallados")
-        # Usar pesos reales (unidades × precio) para la tabla también
-        _unids_t = st.session_state.get(f"unidades_{usr['id']}_{perfil}", {})
-        _px_t    = st.session_state.get("px_actual_detalle", {})
-        if _unids_t and _px_t:
-            _vals_t = [float(_unids_t.get(a,0.0)) * float(_px_t.get(a,0.0)) for a in ACTIVOS_RIESGO]
-            _cash_t = float(_unids_t.get("CASH", 0.0))
-            _tot_t  = sum(_vals_t) + _cash_t
-            _pesos_t = [v / _tot_t for v in _vals_t] + [_cash_t / _tot_t] if _tot_t > 0 else list(pr) + [p_cash]
-        else:
-            _pesos_t = list(pr) + [p_cash]
+        # Usar los mismos pesos reales que el donut (unidades × precio actual)
         df_p = pd.DataFrame({
             "Ticker": ACTIVOS_RIESGO + ["CASH"],
             "Activo": [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"],
-            "Peso":   _pesos_t,
+            "Peso":   vals_donut,
         })
         df_p = df_p[df_p["Peso"] > 0.001].sort_values("Peso", ascending=False)
         df_p["Peso %"] = (df_p["Peso"] * 100).round(2).astype(str) + " %"
