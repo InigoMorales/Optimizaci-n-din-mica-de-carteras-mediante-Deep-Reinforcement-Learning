@@ -525,13 +525,19 @@ def guardar_historial_db(
     uid: str, valor: float, pesos: np.ndarray, ret: float,
     twr: float = 1.0, precios_ref: dict = None, es_rebalanceo: bool = False
 ) -> None:
+    # Nunca guardar NaN o valores inválidos en BD
+    if valor != valor or valor is None:  # NaN check
+        return
+    valor = float(valor)
+    if valor <= 0:
+        return
     with get_conn() as conn:
         try:
             _exec(conn,
                 "INSERT INTO historial_cartera "
                 "(usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,twr,precios_ref_json,es_rebalanceo) "
                 "VALUES (?,?,?,?,?,?,?,?)",
-                (uid, datetime.now().isoformat(), float(valor),
+                (uid, datetime.now().isoformat(), valor,
                  json.dumps(pesos.tolist()), float(ret), float(twr),
                  json.dumps(precios_ref) if precios_ref else None,
                  1 if es_rebalanceo else 0),
@@ -540,7 +546,7 @@ def guardar_historial_db(
             _exec(conn,
                 "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana) "
                 "VALUES (?,?,?,?,?)",
-                (uid, datetime.now().isoformat(), float(valor), json.dumps(pesos.tolist()), float(ret)),
+                (uid, datetime.now().isoformat(), valor, json.dumps(pesos.tolist()), float(ret)),
             )
 
 
@@ -606,9 +612,14 @@ def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
     data = []
     for r in rows:
         try:
+            if r[1] is None:
+                continue  # ignorar filas con valor_cartera NULL
+            v = float(r[1])
+            if v != v:  # NaN check
+                continue
             data.append({
                 "fecha": pd.to_datetime(r[0], format="mixed"),
-                "valor": float(r[1]),
+                "valor": v,
                 "twr":   float(r[2]) if r[2] is not None else 1.0,
             })
         except Exception:
