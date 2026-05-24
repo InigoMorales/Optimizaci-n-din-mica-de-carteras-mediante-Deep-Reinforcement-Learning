@@ -1465,22 +1465,43 @@ def pantalla_app() -> None:
             st.session_state["px_ts"]            = ahora_ts
 
     px_actual = st.session_state.get("px_actual", {})
-    # Filtrar NaN de futuros (GC=F, HG=F) usando último precio válido conocido
+    # Filtrar NaN — si un activo devuelve NaN (mercado cerrado),
+    # usar precios_ref del rebalanceo o el último precio válido en session_state
     import math
-    _px_clean = {}
-    _px_cache = st.session_state.get("px_cache_valido", {})
-    for a, v in px_actual.items():
+    _px_ref_fallback = (ultima_entrada or {}).get("precios_ref") or {}
+    # Si precios_ref vacío, buscarlo directamente en BD
+    if not _px_ref_fallback:
         try:
-            f = float(v)
+            with get_conn() as _conn:
+                _row = _exec(_conn,
+                    "SELECT precios_ref_json FROM historial_cartera "
+                    "WHERE usuario_id=? AND es_rebalanceo=1 AND precios_ref_json IS NOT NULL "
+                    "ORDER BY fecha DESC LIMIT 1",
+                    (usr["id"],),
+                ).fetchone()
+            if _row and _row[0]:
+                _px_ref_fallback = json.loads(_row[0])
+        except Exception:
+            pass
+    _px_valido = st.session_state.get("px_valido_cache", {})
+    _px_clean = {}
+    for a in ACTIVOS_RIESGO:
+        v = px_actual.get(a)
+        try:
+            f = float(v) if v is not None else float("nan")
             if not math.isnan(f) and f > 0:
                 _px_clean[a] = f
-                _px_cache[a] = f  # guardar como último precio válido
-            elif a in _px_cache:
-                _px_clean[a] = _px_cache[a]  # usar último válido
+                _px_valido[a] = f  # actualizar cache de último precio válido
+            elif a in _px_valido:
+                _px_clean[a] = _px_valido[a]
+            elif a in _px_ref_fallback:
+                _px_clean[a] = float(_px_ref_fallback[a])
         except Exception:
-            if a in _px_cache:
-                _px_clean[a] = _px_cache[a]
-    st.session_state["px_cache_valido"] = _px_cache
+            if a in _px_valido:
+                _px_clean[a] = _px_valido[a]
+            elif a in _px_ref_fallback:
+                _px_clean[a] = float(_px_ref_fallback[a])
+    st.session_state["px_valido_cache"] = _px_valido
     px_actual = _px_clean
     st.session_state["px_actual_detalle"] = px_actual
 
