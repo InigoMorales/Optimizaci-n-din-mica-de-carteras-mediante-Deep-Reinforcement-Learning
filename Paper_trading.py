@@ -1825,7 +1825,10 @@ def pantalla_app() -> None:
             hole=0.55,
             marker=dict(colors=px.colors.qualitative.Set3,
                         line=dict(color=bg_p, width=2)),
-            textinfo="none",
+            textinfo="label+percent",
+            texttemplate=[f"{l}<br>{v:.1f}%" if v > 2 else "" 
+                          for l, v in zip(_df_donut["label"].tolist(), 
+                                          (_df_donut["peso"]*100).round(2).tolist())],
             hovertemplate="%{label}<br>%{value:.2f}%<extra></extra>",
         ))
         fig2.update_layout(
