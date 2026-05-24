@@ -1841,18 +1841,21 @@ def pantalla_app() -> None:
                 vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real] if _total_real > 0 else list(pr) + [p_cash]
             else:
                 vals_donut = list(pr) + [p_cash]
-            lbls = [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"]
-            vals = vals_donut
-            mask = np.array(vals) > 0.01
+            # Usar df_p para que donut y tabla sean idénticos
+            _df_donut = pd.DataFrame({
+                "label": [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"],
+                "peso":  vals_donut,
+            })
+            _df_donut = _df_donut[_df_donut["peso"] > 0.001]
             fig2 = go.Figure(go.Pie(
-                labels=[l for l,m in zip(lbls,mask) if m],
-                values=[v for v,m in zip(vals,mask) if m],
+                labels=_df_donut["label"].tolist(),
+                values=(_df_donut["peso"] * 100).round(2).tolist(),
                 hole=0.58,
                 marker=dict(colors=px.colors.qualitative.Set3,
                             line=dict(color=bg_p, width=2)),
                 textfont=dict(family="JetBrains Mono", size=10),
                 textinfo="label+percent",
-                hovertemplate="%{label}<br>%{percent}<extra></extra>",
+                hovertemplate="%{label}<br>%{value:.2f}%<extra></extra>",
             ))
             fig2.update_layout(
                 template="plotly_dark" if dark else "plotly_white",
