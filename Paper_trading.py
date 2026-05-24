@@ -1819,24 +1819,28 @@ def pantalla_app() -> None:
             "peso":  vals_donut,
         })
         _df_donut = _df_donut[_df_donut["peso"] > 0.001]
-        _col_izq, _col_cen, _col_der = st.columns([1, 3, 1])
-        with _col_cen:
-            fig2 = go.Figure(go.Pie(
-                labels=_df_donut["label"].tolist(),
-                values=(_df_donut["peso"] * 100).round(2).tolist(),
-                hole=0.5,
-                marker=dict(colors=px.colors.qualitative.Set3,
-                            line=dict(color=bg_p, width=2)),
-                textfont=dict(family="JetBrains Mono", size=12),
-                textinfo="label+percent",
-                hovertemplate="%{label}<br>%{value:.2f}%<extra></extra>",
-            ))
-            fig2.update_layout(
-                template="plotly_dark" if dark else "plotly_white",
-                paper_bgcolor="rgba(0,0,0,0)", height=420,
-                margin=dict(l=0,r=0,t=10,b=0), showlegend=False,
-            )
-            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+        fig2 = go.Figure(go.Pie(
+            labels=_df_donut["label"].tolist(),
+            values=(_df_donut["peso"] * 100).round(2).tolist(),
+            hole=0.55,
+            marker=dict(colors=px.colors.qualitative.Set3,
+                        line=dict(color=bg_p, width=2)),
+            textinfo="none",
+            hovertemplate="%{label}<br>%{value:.2f}%<extra></extra>",
+        ))
+        fig2.update_layout(
+            template="plotly_dark" if dark else "plotly_white",
+            paper_bgcolor="rgba(0,0,0,0)", height=380,
+            margin=dict(l=0,r=0,t=10,b=10),
+            showlegend=True,
+            legend=dict(
+                orientation="v",
+                x=1.02, y=0.5,
+                xanchor="left", yanchor="middle",
+                font=dict(family="JetBrains Mono", size=11, color=txt_c),
+            ),
+        )
+        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
 
         # Tabla
         st.markdown("#### Pesos detallados")
