@@ -90,77 +90,77 @@ SEMANAS_HISTORIA    = 26
 PREGUNTAS = [
     {
         "id": "edad",
-        "texto": "¿Cuántos años tienes?",
+        "texto": "Cuantos anos tienes?",
         "opciones": [
-            ("Menos de 25 años",   5),
-            ("Entre 25 y 35 años", 4),
-            ("Entre 35 y 50 años", 3),
-            ("Entre 50 y 65 años", 2),
-            ("Más de 65 años",     1),
+            ("Menos de 25 anos",   5),
+            ("Entre 25 y 35 anos", 4),
+            ("Entre 35 y 50 anos", 3),
+            ("Entre 50 y 65 anos", 2),
+            ("Mas de 65 anos",     1),
         ],
     },
     {
         "id": "caida",
-        "texto": "Imagina que inviertes 10.000 euros y al mes siguiente valen 8.000 euros. ¿Qué harías?",
+        "texto": "Imagina que inviertes 10.000 euros y al mes siguiente valen 8.000 euros. Que harias?",
         "opciones": [
-            ("Los saco todos, esto no es para mí",                        1),
-            ("Saco una parte para no perder más",                         2),
+            ("Los saco todos, esto no es para mi",                        1),
+            ("Saco una parte para no perder mas",                         2),
             ("No hago nada, espero a que se recupere",                    3),
             ("Depende de por que ha bajado",                              4),
-            ("Meto más dinero, está más barato — es una oportunidad",     5),
+            ("Meto mas dinero, esta mas barato - es una oportunidad",     5),
         ],
     },
     {
         "id": "objetivo",
-        "texto": "¿Para qué es este dinero?",
+        "texto": "Para que es este dinero?",
         "opciones": [
             ("Por si acaso, mi fondo de emergencia",                     1),
-            ("Para algo concreto en los próximos años (casa, coche...)", 2),
+            ("Para algo concreto en los proximos anos (casa, coche...)", 2),
             ("Para dejar algo a mis hijos o familia",                    3),
-            ("Para complementar mi pensión algún día",                   4),
-            ("No tengo un plan específico, quiero que crezca",           5),
+            ("Para complementar mi pension algun dia",                   4),
+            ("No tengo un plan especifico, quiero que crezca",           5),
         ],
     },
     {
         "id": "sueldo",
         "texto": (
             "Te ofrecen elegir entre dos opciones de sueldo:\n\n"
-            "Opción A: sueldo fijo de 1.900 euros al mes\n\n"
-            "Opción B: lanzas una moneda. Si sale cara cobras 1.000 euros, "
+            "Opcion A: sueldo fijo de 1.900 euros al mes\n\n"
+            "Opcion B: lanzas una moneda. Si sale cara cobras 1.000 euros, "
             "si sale cruz cobras 3.000 euros\n\n"
-            "¿Cuál elegirías?"
+            "Cual elegirías?"
         ),
         "opciones": [
             ("El fijo de 1.900 euros, sin dudarlo", 1),
-            ("Me lo tendría que pensar",             3),
+            ("Me lo tendria que pensar",             3),
             ("La moneda, prefiero arriesgar",        5),
         ],
     },
     {
         "id": "plazo",
-        "texto": "¿Cuándo crees que necesitarás este dinero?",
+        "texto": "Cuando crees que necesitaras este dinero?",
         "opciones": [
-            ("Podría necesitarlo en cualquier momento", 1),
-            ("En los próximos 2 años",                  2),
+            ("Podria necesitarlo en cualquier momento", 1),
+            ("En los proximos 2 anos",                  2),
             ("No lo se",                                3),
-            ("En 5 o 10 años",                          4),
-            ("No lo necesitaré en mucho tiempo",        5),
+            ("En 5 o 10 anos",                          4),
+            ("No lo necesitare en mucho tiempo",        5),
         ],
     },
     {
         "id": "importancia",
-        "texto": "¿Cómo de importante es este dinero para ti respecto a todo lo que tienes?",
+        "texto": "Como de importante es este dinero para ti respecto a todo lo que tienes?",
         "opciones": [
             ("Es casi todo lo que tengo",                          1),
-            ("Es bastante, me afectaría mucho perderlo",           2),
-            ("Es una parte, me afectaría pero lo superaría",       3),
+            ("Es bastante, me afectaria mucho perderlo",           2),
+            ("Es una parte, me afectaria pero lo superaria",       3),
             ("Es relativamente poco de todo lo que tengo",         4),
-            ("Es una cantidad pequeña, no me cambiaría la vida",   5),
+            ("Es una cantidad pequena, no me cambiaria la vida",   5),
         ],
     },
     {
         "id": "decision",
-        "texto": "¿Cuándo tomas decisiones importantes en tu vida, cómo sueles actuar?",
+        "texto": "Cuando tomas decisiones importantes en tu vida, como sueles actuar?",
         "opciones": [
             ("Voy siempre a lo seguro aunque gane menos",              1),
             ("Prefiero seguridad pero acepto algo de riesgo",          2),
@@ -290,7 +290,6 @@ def init_db() -> None:
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS twr REAL DEFAULT 1.0",
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS precios_ref_json TEXT",
                 "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS es_rebalanceo INTEGER DEFAULT 0",
-                "ALTER TABLE historial_cartera ADD COLUMN IF NOT EXISTS unidades_json TEXT",
             ]:
                 try:
                     cur.execute(alter)
@@ -446,15 +445,11 @@ def obtener_movimientos(uid: str, limit: int = 10) -> list[dict]:
 
 
 def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
-    """Devuelve el último registro de pesos reales del historial.
-    Excluye filas es_rebalanceo=2 (unidades). Incluye precios_ref_json
-    para que la app calcule valor_base real desde unidades x precios.
-    """
+    """Devuelve el último registro del historial de un usuario."""
     with get_conn() as conn:
-        row = _exec(conn,
-            "SELECT fecha, valor_cartera, pesos_json, precios_ref_json "
+        row = _exec(conn, 
+            "SELECT fecha, valor_cartera, pesos_json "
             "FROM historial_cartera WHERE usuario_id = ? "
-            "AND (es_rebalanceo = 0 OR es_rebalanceo = 1) "
             "ORDER BY fecha DESC LIMIT 1",
             (usuario_id,),
         ).fetchone()
@@ -470,25 +465,10 @@ def obtener_ultima_entrada(usuario_id: str) -> Optional[dict]:
             valor = float(raw)
     except Exception:
         valor = 10_000.0
-    pesos = None
-    if row[2]:
-        try:
-            parsed = json.loads(row[2])
-            if isinstance(parsed, list):
-                pesos = parsed
-        except (json.JSONDecodeError, TypeError):
-            pesos = None
-    precios_ref = None
-    if row[3]:
-        try:
-            precios_ref = json.loads(row[3])
-        except (json.JSONDecodeError, TypeError):
-            precios_ref = None
     return {
-        "fecha":       str(row[0]),
-        "valor":       valor,
-        "pesos":       pesos,
-        "precios_ref": precios_ref,
+        "fecha": str(row[0]),
+        "valor": valor,
+        "pesos": json.loads(row[2]) if row[2] else None,
     }
 
 
@@ -525,19 +505,13 @@ def guardar_historial_db(
     uid: str, valor: float, pesos: np.ndarray, ret: float,
     twr: float = 1.0, precios_ref: dict = None, es_rebalanceo: bool = False
 ) -> None:
-    # Nunca guardar NaN o valores inválidos en BD
-    if valor != valor or valor is None:  # NaN check
-        return
-    valor = float(valor)
-    if valor <= 0:
-        return
     with get_conn() as conn:
         try:
             _exec(conn,
                 "INSERT INTO historial_cartera "
                 "(usuario_id,fecha,valor_cartera,pesos_json,retorno_semana,twr,precios_ref_json,es_rebalanceo) "
                 "VALUES (?,?,?,?,?,?,?,?)",
-                (uid, datetime.now().isoformat(), valor,
+                (uid, datetime.now().isoformat(), float(valor),
                  json.dumps(pesos.tolist()), float(ret), float(twr),
                  json.dumps(precios_ref) if precios_ref else None,
                  1 if es_rebalanceo else 0),
@@ -546,7 +520,7 @@ def guardar_historial_db(
             _exec(conn,
                 "INSERT INTO historial_cartera (usuario_id,fecha,valor_cartera,pesos_json,retorno_semana) "
                 "VALUES (?,?,?,?,?)",
-                (uid, datetime.now().isoformat(), valor, json.dumps(pesos.tolist()), float(ret)),
+                (uid, datetime.now().isoformat(), float(valor), json.dumps(pesos.tolist()), float(ret)),
             )
 
 
@@ -560,8 +534,6 @@ def cargar_historial_db(uid: str) -> list[dict]:
     result = []
     for r in rows:
         try:
-            if r[1] is None:
-                continue  # ignorar filas con valor_cartera NULL
             fecha   = str(r[0])
             # r[1] puede ser float, int, str o bytes según versión de SQLite
             raw_val = r[1]
@@ -597,16 +569,16 @@ def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
     desde = (datetime.now() - timedelta(hours=ventana_horas)).isoformat()
     with get_conn() as conn:
         try:
-            rows = _exec(conn,
+            rows = _exec(conn, 
                 "SELECT fecha, valor_cartera, twr FROM historial_cartera "
-                "WHERE usuario_id=? AND fecha>=? AND es_rebalanceo=0 ORDER BY fecha ASC",
+                "WHERE usuario_id=? AND fecha>=? ORDER BY fecha ASC",
                 (usuario_id, desde),
             ).fetchall()
         except Exception:
             # Fallback si la columna twr no existe aún
-            rows = _exec(conn,
+            rows = _exec(conn, 
                 "SELECT fecha, valor_cartera, 1.0 FROM historial_cartera "
-                "WHERE usuario_id=? AND fecha>=? AND es_rebalanceo=0 ORDER BY fecha ASC",
+                "WHERE usuario_id=? AND fecha>=? ORDER BY fecha ASC",
                 (usuario_id, desde),
             ).fetchall()
     if not rows:
@@ -614,14 +586,9 @@ def cargar_snapshots_bd(usuario_id: str, ventana_horas: int) -> pd.DataFrame:
     data = []
     for r in rows:
         try:
-            if r[1] is None:
-                continue  # ignorar filas con valor_cartera NULL
-            v = float(r[1])
-            if v != v:  # NaN check
-                continue
             data.append({
                 "fecha": pd.to_datetime(r[0], format="mixed"),
-                "valor": v,
+                "valor": float(r[1]),
                 "twr":   float(r[2]) if r[2] is not None else 1.0,
             })
         except Exception:
@@ -794,25 +761,15 @@ def decidir_pesos(agente: AgenteSAC, estado: np.ndarray) -> np.ndarray:
 def calcular_metricas(hist: list[dict]) -> dict:
     if len(hist) < 2:
         return {"sharpe": 0.0, "cagr": 0.0, "mdd": 0.0}
-    vals = np.array([float(h["valor"]) for h in hist
-                     if h.get("valor") is not None and np.isfinite(float(h["valor"])) and float(h["valor"]) > 0])
-    if len(vals) < 2:
-        return {"sharpe": 0.0, "cagr": 0.0, "mdd": 0.0}
+    vals = np.array([float(h["valor"]) for h in hist if h.get("valor") is not None])
     rets = np.diff(vals) / vals[:-1]
-    rets = rets[np.isfinite(rets)]
     n    = len(rets)
-    if n < 1:
-        return {"sharpe": 0.0, "cagr": 0.0, "mdd": 0.0}
     cagr = (vals[-1] / vals[0]) ** (FACTOR_ANUALIZACION / n) - 1.0
     sh   = (rets.mean() / rets.std() * np.sqrt(FACTOR_ANUALIZACION)
             if n > 1 and rets.std() > 0 else 0.0)
     acum = (1 + rets).cumprod()
     mdd  = float((acum / np.maximum.accumulate(acum) - 1).min()) if len(acum) else 0.0
-    return {
-        "sharpe": float(sh)   if np.isfinite(sh)   else 0.0,
-        "cagr":   float(cagr) if np.isfinite(cagr) else 0.0,
-        "mdd":    float(mdd)  if np.isfinite(mdd)  else 0.0,
-    }
+    return {"sharpe": float(sh), "cagr": float(cagr), "mdd": float(mdd)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1093,7 +1050,7 @@ def pantalla_cuestionario() -> None:
         st.markdown(f"""
 <div style='font-family:Sora;font-size:22px;font-weight:700;margin-bottom:6px;'>Cuentanos un poco sobre ti</div>
 <div style='font-size:13px;color:#64748b;margin-bottom:20px;'>
-    Hola {usr['nombre']}, estas preguntas nos ayudan a elegir la estrategia más adecuada para ti.
+    Hola {usr['nombre']}, estas preguntas nos ayudan a elegir la estrategia mas adecuada para ti.
 </div>
 <div class='pb-out'><div class='pb-in' style='width:{pct}%;'></div></div>
 <div class='q-hdr'>Pregunta {q_idx+1} de {n}</div>""", unsafe_allow_html=True)
@@ -1293,7 +1250,7 @@ def pantalla_app() -> None:
                 except Exception:
                     ts_local = ts
                 ultima_hora = ts_local.strftime("%d/%m %H:%M")
-                st.caption(f"Precio al: {ultima_hora} | Refresca en 5 min")
+                st.caption(f"Precio al: {ultima_hora} | Refresca en 15 min")
             else:
                 st.caption(f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
         except Exception:
@@ -1360,7 +1317,7 @@ def pantalla_app() -> None:
     # ── Autorefresh cada 15 minutos ────────────────────────────────────────
     try:
         from streamlit_autorefresh import st_autorefresh
-        st_autorefresh(interval=5 * 60 * 1000, key="autorefresh_mercado")
+        st_autorefresh(interval=15 * 60 * 1000, key="autorefresh_mercado")
     except ImportError:
         pass  # si no está instalado, no pasa nada
 
@@ -1369,9 +1326,7 @@ def pantalla_app() -> None:
         hist_bd = cargar_historial_db(usr["id"])
         if hist_bd:
             st.session_state.historico = hist_bd
-            _last_val = hist_bd[-1].get("valor")
-            if _last_val and _last_val == _last_val:  # no None, no NaN
-                st.session_state.valor_cartera = float(_last_val)
+            st.session_state.valor_cartera = hist_bd[-1]["valor"]
 
     # ── Descargar datos ────────────────────────────────────────────────────
     with st.spinner("Descargando datos..."):
@@ -1421,22 +1376,7 @@ def pantalla_app() -> None:
     if ultima_entrada and ultima_entrada["pesos"]:
         # Cargar pesos del último rebalanceo (fijos hasta el próximo viernes)
         pesos_vigentes = np.array(ultima_entrada["pesos"], dtype=np.float32)
-        # valor_base = valor real de mercado en el momento del rebalanceo
-        # Intentar calcularlo desde unidades × precios_ref del rebalanceo
-        _unids_ref = cargar_unidades_db(usr["id"], perfil)
-        _px_ref    = ultima_entrada.get("precios_ref") or {}
-        if _unids_ref and _px_ref:
-            _vb = sum(
-                float(_unids_ref.get(a, 0.0)) * float(_px_ref.get(a, 0.0))
-                for a in ACTIVOS_RIESGO
-            ) + float(_unids_ref.get("CASH", 0.0))
-            valor_base = _vb if _vb > 1.0 else float(ultima_entrada["valor"])
-        else:
-            # Fallback: usar saldo del usuario como valor_base
-            valor_base = float(usr.get("saldo", 10_000.0))
-        # Nunca dejar valor_base en 0 o NaN
-        if not valor_base or valor_base != valor_base:  # NaN check
-            valor_base = float(usr.get("saldo", 10_000.0))
+        valor_base     = ultima_entrada["valor"]
     else:
         # Primera vez — todo en cash, valor inicial
         n_act          = len(ACTIVOS_RIESGO)
@@ -1475,44 +1415,6 @@ def pantalla_app() -> None:
             st.session_state["px_ts"]            = ahora_ts
 
     px_actual = st.session_state.get("px_actual", {})
-    # Filtrar NaN — si un activo devuelve NaN (mercado cerrado),
-    # usar precios_ref del rebalanceo o el último precio válido en session_state
-    import math
-    _px_ref_fallback = (ultima_entrada or {}).get("precios_ref") or {}
-    # Si precios_ref vacío, buscarlo directamente en BD
-    if not _px_ref_fallback:
-        try:
-            with get_conn() as _conn:
-                _row = _exec(_conn,
-                    "SELECT precios_ref_json FROM historial_cartera "
-                    "WHERE usuario_id=? AND es_rebalanceo=1 AND precios_ref_json IS NOT NULL "
-                    "ORDER BY fecha DESC LIMIT 1",
-                    (usr["id"],),
-                ).fetchone()
-            if _row and _row[0]:
-                _px_ref_fallback = json.loads(_row[0])
-        except Exception:
-            pass
-    _px_valido = st.session_state.get("px_valido_cache", {})
-    _px_clean = {}
-    for a in ACTIVOS_RIESGO:
-        v = px_actual.get(a)
-        try:
-            f = float(v) if v is not None else float("nan")
-            if not math.isnan(f) and f > 0:
-                _px_clean[a] = f
-                _px_valido[a] = f  # actualizar cache de último precio válido
-            elif a in _px_valido:
-                _px_clean[a] = _px_valido[a]
-            elif a in _px_ref_fallback:
-                _px_clean[a] = float(_px_ref_fallback[a])
-        except Exception:
-            if a in _px_valido:
-                _px_clean[a] = _px_valido[a]
-            elif a in _px_ref_fallback:
-                _px_clean[a] = float(_px_ref_fallback[a])
-    st.session_state["px_valido_cache"] = _px_valido
-    px_actual = _px_clean
     st.session_state["px_actual_detalle"] = px_actual
 
     # Cargar unidades: session_state → BD → calcular por primera vez
@@ -1538,8 +1440,6 @@ def pantalla_app() -> None:
         valor = max(valor, 0.01)
     else:
         valor = valor_base
-
-
 
 
     cap   = st.session_state.get("capital_inicial", 10_000.0)
@@ -1790,68 +1690,58 @@ def pantalla_app() -> None:
             cl = "neg" if met["mdd"] < 0 else "pos"
             st.markdown(mk("Max Drawdown", f"{met['mdd']*100:.1f}%", cl), unsafe_allow_html=True)
 
-        # Asignacion actual — donut grande centrado
-        st.markdown("#### Asignación actual")
-        _px_para_donut = px_actual if px_actual else {}
-        if not _px_para_donut and ultima_entrada and ultima_entrada.get("precios_ref"):
-            _px_para_donut = ultima_entrada["precios_ref"]
-        if not _px_para_donut:
-            try:
-                with get_conn() as _c:
-                    _r = _exec(_c,
-                        "SELECT precios_ref_json FROM historial_cartera "
-                        "WHERE usuario_id=? AND es_rebalanceo=1 AND precios_ref_json IS NOT NULL "
-                        "ORDER BY fecha DESC LIMIT 1", (usr["id"],)).fetchone()
-                if _r and _r[0]:
-                    _px_para_donut = json.loads(_r[0])
-            except Exception:
-                pass
-        _unids_donut = unidades or cargar_unidades_db(usr["id"], perfil)
-        if _unids_donut and _px_para_donut:
-            _vals_reales = [float(_unids_donut.get(a,0.0)) * float(_px_para_donut.get(a,0.0)) for a in ACTIVOS_RIESGO]
-            _cash_real   = float(_unids_donut.get("CASH", 0.0))
-            _total_real  = sum(_vals_reales) + _cash_real
-            vals_donut = [v / _total_real for v in _vals_reales] + [_cash_real / _total_real] if _total_real > 0 else list(pr) + [p_cash]
-        else:
-            vals_donut = list(pr) + [p_cash]
-        _df_donut = pd.DataFrame({
-            "label": [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"],
-            "peso":  vals_donut,
-        })
-        _df_donut = _df_donut[_df_donut["peso"] > 0.001]
-        fig2 = go.Figure(go.Pie(
-            labels=_df_donut["label"].tolist(),
-            values=(_df_donut["peso"] * 100).round(2).tolist(),
-            hole=0.55,
-            marker=dict(colors=px.colors.qualitative.Set3,
-                        line=dict(color=bg_p, width=2)),
-            textinfo="label+percent",
-            texttemplate=[f"{l}<br>{v:.1f}%" if v > 2 else "" 
-                          for l, v in zip(_df_donut["label"].tolist(), 
-                                          (_df_donut["peso"]*100).round(2).tolist())],
-            hovertemplate="%{label}<br>%{value:.2f}%<extra></extra>",
-        ))
-        fig2.update_layout(
-            template="plotly_dark" if dark else "plotly_white",
-            paper_bgcolor="rgba(0,0,0,0)", height=380,
-            margin=dict(l=0,r=0,t=10,b=10),
-            showlegend=True,
-            legend=dict(
-                orientation="v",
-                x=1.02, y=0.5,
-                xanchor="left", yanchor="middle",
-                font=dict(family="JetBrains Mono", size=11, color=txt_c),
-            ),
-        )
-        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+        # Graficas
+        gi, gd = st.columns([3, 2])
+        with gi:
+            st.markdown("#### Evolucion de cartera")
+            if len(st.session_state.historico) > 1:
+                df_h = pd.DataFrame(st.session_state.historico)
+                df_h["fecha"] = pd.to_datetime(df_h["fecha"], format="mixed", dayfirst=False)
+                rgb  = tuple(int(info["color"].lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+                fig  = go.Figure(go.Scatter(
+                    x=df_h["fecha"], y=df_h["valor"],
+                    mode="lines", line=dict(color=info["color"], width=2, shape="spline", smoothing=1.2),
+                    fill="tozeroy", fillcolor=f"rgba{rgb + (0.07,)}",
+                ))
+                fig.update_layout(
+                    template="plotly_dark" if dark else "plotly_white",
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    height=260, margin=dict(l=0,r=0,t=10,b=0), showlegend=False,
+                    xaxis=dict(showgrid=False, color=txt_c),
+                    yaxis=dict(showgrid=True, gridcolor=grid_c,
+                               tickprefix="EUR ", tickformat=",.0f", color=txt_c),
+                )
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.info("Historico insuficiente.")
+
+        with gd:
+            st.markdown("#### Asignacion actual")
+            lbls = [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"]
+            vals = list(pr) + [p_cash]
+            mask = np.array(vals) > 0.01
+            fig2 = go.Figure(go.Pie(
+                labels=[l for l,m in zip(lbls,mask) if m],
+                values=[v for v,m in zip(vals,mask) if m],
+                hole=0.58,
+                marker=dict(colors=px.colors.qualitative.Set3,
+                            line=dict(color=bg_p, width=2)),
+                textfont=dict(family="JetBrains Mono", size=10),
+                textinfo="label+percent",
+            ))
+            fig2.update_layout(
+                template="plotly_dark" if dark else "plotly_white",
+                paper_bgcolor="rgba(0,0,0,0)", height=260,
+                margin=dict(l=0,r=0,t=10,b=0), showlegend=False,
+            )
+            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
 
         # Tabla
         st.markdown("#### Pesos detallados")
-        # Usar los mismos pesos reales que el donut (unidades × precio actual)
         df_p = pd.DataFrame({
             "Ticker": ACTIVOS_RIESGO + ["CASH"],
             "Activo": [NOMBRES_ACTIVOS.get(a,a) for a in ACTIVOS_RIESGO] + ["Cash"],
-            "Peso":   vals_donut,
+            "Peso":   list(pr) + [p_cash],
         })
         df_p = df_p[df_p["Peso"] > 0.001].sort_values("Peso", ascending=False)
         df_p["Peso %"] = (df_p["Peso"] * 100).round(2).astype(str) + " %"
@@ -1867,18 +1757,16 @@ def pantalla_app() -> None:
                          hide_index=True, use_container_width=True,
                          height=min(50+len(df_p)*36, 400))
         with ci:
-            _vd = vals_donut
-            rv  = float(sum(_vd[i] for i in range(min(8, len(_vd)))))
-            rf  = float(sum(_vd[i] for i in range(8, min(13, len(_vd)))))
-            com = float(sum(_vd[i] for i in range(13, min(15, len(_vd)))))
-            rei = float(_vd[15]) if len(_vd) > 15 else 0.0
-            csh = float(_vd[16]) if len(_vd) > 16 else 0.0
+            rv  = float(sum(pr[:8]))
+            rf  = float(sum(pr[8:13]))
+            com = float(sum(pr[13:15]))
+            rei = float(pr[15]) if len(pr) > 15 else 0.0
             st.markdown(f"""<div class='info-box'>
 <b>Renta Variable</b> {rv*100:.1f}%<br>
 <b>Renta Fija</b> {rf*100:.1f}%<br>
 <b>Commodities</b> {com*100:.1f}%<br>
 <b>REITs</b> {rei*100:.1f}%<br>
-<b>Cash</b> {csh*100:.1f}%
+<b>Cash</b> {p_cash*100:.1f}%
 </div>""", unsafe_allow_html=True)
 
         # Retornos mercado
@@ -1959,6 +1847,38 @@ def pantalla_app() -> None:
     st.caption("Paper trading — dinero virtual. TFG: Optimizacion dinamica de carteras mediante Deep RL.")
 
 
+def _snapshot_silencioso_todos(px_actual: dict) -> None:
+    """
+    Descarga precios y guarda snapshots para TODOS los usuarios activos.
+    Se llama cuando UptimeRobot hace ping con ?ping=1, sin usuario logueado.
+    """
+    import math
+    try:
+        with get_conn() as conn:
+            rows = _exec(conn,
+                "SELECT id, perfil_asignado FROM usuarios WHERE perfil_asignado IS NOT NULL",
+                ()
+            ).fetchall()
+        for (uid, perfil) in rows:
+            try:
+                unidades = cargar_unidades_db(uid, perfil)
+                if not unidades or not px_actual:
+                    continue
+                valor = sum(
+                    float(unidades.get(a, 0.0)) * float(px_actual.get(a, 0.0))
+                    for a in ACTIVOS_RIESGO
+                ) + float(unidades.get("CASH", 0.0))
+                if not valor or math.isnan(valor) or valor <= 0:
+                    continue
+                ultima = obtener_ultima_entrada(uid)
+                pesos_arr = np.array(ultima["pesos"], dtype=np.float32) if ultima and ultima.get("pesos") else np.zeros(len(ACTIVOS_RIESGO)+1)
+                guardar_historial_db(uid, valor, pesos_arr, 0.0)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 def main() -> None:
     st.set_page_config(page_title="Portfolio AI", page_icon="📊",
                        layout="wide", initial_sidebar_state="auto")
@@ -1974,6 +1894,19 @@ def main() -> None:
     if "usuario" in st.session_state:
         dark = st.session_state.usuario.get("tema", "dark") == "dark"
     inject_css(dark)
+
+    # ── Ping de UptimeRobot: guardar snapshots sin usuario logueado ──────
+    try:
+        _qp = st.query_params.get("ping", "")
+        if _qp == "1":
+            _px_h = descargar_precios_horarios()
+            if _px_h is not None and not _px_h.empty:
+                _px_dict = _px_h.iloc[-1].to_dict()
+                _snapshot_silencioso_todos(_px_dict)
+            st.markdown("OK")
+            st.stop()
+    except Exception:
+        pass
 
     p = st.session_state.pantalla
     if   p == "login":        pantalla_login()
