@@ -1,4 +1,42 @@
-resultados_experimentos_reducido/*.csv
-resultados_experimentos/*.csv
+# Entorno virtual
+.venv/
+
+# Base de datos y logs
 paper_trading.db
+scheduler.log
+
+# Secretos
 .env
+
+# Datos y modelos
+Datos/
+agentes_finales/
+agentes_ganadores/
+resultados/
+resultados_experimentos/
+resultados_experimentos_reducido/
+
+# Notebooks de prueba / versiones antiguas
+HPO*.ipynb
+!HPO_por_perfil_v3.ipynb
+notebook.ipynb
+train_sac1.ipynb
+
+# Scripts descartados
+ejecutor.py
+ejecutor1.py
+politicas.py
+Test.py
+Test_reentrenar.py
+casos_ejemplo.py
+graf_val.py
+tnv2.py
+borrar.py
+src/prueba.py
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
