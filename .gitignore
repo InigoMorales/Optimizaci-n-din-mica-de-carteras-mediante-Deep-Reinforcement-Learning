@@ -11,7 +11,12 @@ scheduler.log
 # Datos y modelos
 Datos/
 agentes_finales/
-agentes_ganadores/
+agentes_ganadores/*
+!agentes_ganadores/agente_muy_conservador.pt
+!agentes_ganadores/agente_conservador.pt
+!agentes_ganadores/agente_normal.pt
+!agentes_ganadores/agente_arriesgado.pt
+!agentes_ganadores/agente_muy_arriesgado.pt
 resultados/
 resultados_experimentos/
 resultados_experimentos_reducido/
